@@ -3,6 +3,7 @@ import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } fr
 import handler from "vinext/server/app-router-entry";
 
 interface Env {
+  GOOGLE_CLIENT_ID?: string;
   ASSETS: Fetcher;
   DB: D1Database;
   IMAGES: {
@@ -28,6 +29,9 @@ interface ExecutionContext {
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+    if (url.pathname === "/api/google/config") {
+      return Response.json({ clientId: env.GOOGLE_CLIENT_ID || "" }, { headers: { "Cache-Control": "no-store" } });
+    }
 
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];

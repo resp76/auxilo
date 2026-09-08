@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ConnectedCalendar, PeopleWorkspace, SourceConnections, useConnectedWorkspace } from "./connected-workspace";
+import type { Person } from "./people-calendar";
 
 type Task = {
   id: number;
@@ -54,6 +56,10 @@ export default function Home() {
   const [emailProvider, setEmailProvider] = useState("Gmail");
   const [emailAddress, setEmailAddress] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const sources = useConnectedWorkspace();
+  function followUp(person: Person) {
+    setTasks(current => [...current, { id: Date.now(), title: `Follow up with ${person.name}`, meta: `${person.email || person.organization || person.account} · Local task${person.source === "Demo" ? " · Sample contact" : ""}`, source: "Personal", done: false, priority: true }]);
+  }
   const completed = useMemo(() => tasks.filter((task) => task.done).length, [tasks]);
 
   function toggleTask(id: number) {
@@ -76,7 +82,7 @@ export default function Home() {
         </div>
 
         <nav className="main-nav" aria-label="Main navigation">
-          {["Today", "Inbox", "Calendar", "Tasks", "Projects", "Notes", "Integrations"].map((item) => (
+          {["Today", "Inbox", "Calendar", "Tasks", "Projects", "People", "Notes", "Integrations"].map((item) => (
             <button key={item} className={nav === item ? "nav-item active" : "nav-item"} onClick={() => setNav(item)}>
               <span className="nav-icon" aria-hidden="true">{item === "Today" ? "☀" : item === "Inbox" ? "↙" : item === "Calendar" ? "□" : item === "Tasks" ? "✓" : item === "Projects" ? "◇" : item === "Notes" ? "▤" : "⇄"}</span>
               {item}
@@ -93,7 +99,7 @@ export default function Home() {
         </nav>
 
         <div className="sidebar-footer">
-          <button className="sync-status"><span className="live-dot" />All systems synced</button>
+          <button className="sync-status" onClick={() => setNav("Integrations")}><span className="live-dot" />{sources.sessions.length ? `${sources.sessions.length} Google account(s)` : "Demo workspace · View sources"}</button>
           <div className="profile">
             <div className="avatar">RE</div>
             <div><strong>Rold</strong><span>Personal workspace</span></div>
@@ -105,7 +111,7 @@ export default function Home() {
       <section className="workspace">
         <header className="topbar">
           <button className="mobile-brand" aria-label="Open navigation"><span className="brand-mark small"><i /><i /><i /></span></button>
-          <div className="search"><span>⌕</span><input aria-label="Search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder={nav === "Notes" ? "Search iPhone Notes…" : "Search everything…"} /><kbd>⌘ K</kbd></div>
+          <div className="search"><span>⌕</span><input aria-label="Search notes or people" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder={nav === "People" ? "Search people…" : nav === "Notes" ? "Search iPhone Notes…" : "Search people…"} onKeyDown={e => { if (e.key === "Enter" && nav !== "Notes") setNav("People"); }} /></div>
           <div className="top-actions">
             <button className={customizing ? "customize-button active" : "customize-button"} onClick={() => setCustomizing((value) => !value)}>Customize</button>
             <button className="icon-button" aria-label="Notifications">♢<span className="notice-dot" /></button>
@@ -121,7 +127,8 @@ export default function Home() {
           </section>
         )}
 
-        {nav !== "Today" && (
+        {nav === "People" && <section className="module-page"><header className="module-header"><p className="eyebrow">Workspace</p><h1>People</h1><p>Find a person. See what connects you. Make time to follow up.</p></header><PeopleWorkspace sources={sources} query={searchQuery} onFollowUp={followUp} onCalendar={() => setNav("Calendar")} onSetup={() => setNav("Integrations")} /></section>}
+        {nav !== "Today" && nav !== "People" && (
           <ModuleView
             name={nav}
             tasks={tasks}
@@ -142,6 +149,8 @@ export default function Home() {
             }}
             removeEmailAccount={(id) => setEmailAccounts((current) => current.filter((account) => account.id !== id))}
             searchQuery={searchQuery}
+            sources={sources}
+            onSetup={() => setNav("Integrations")}
           />
         )}
 
@@ -151,7 +160,7 @@ export default function Home() {
               <div>
                 <p className="eyebrow">Tuesday, September 8</p>
                 <h1>Good morning, Rold.</h1>
-                <p className="lede">Here’s what needs your attention today.</p>
+                <p className="lede">Sample day · Open People or Calendar for connected data.</p>
               </div>
               <div className="day-score"><strong>{tasks.length - completed}</strong><span>open today</span></div>
             </div>
@@ -210,7 +219,7 @@ export default function Home() {
         </div>
 
         <nav className="mobile-nav" aria-label="Mobile navigation">
-          {["Today", "Calendar", "Tasks", "Notes", "Integrations"].map((item) => <button key={item} className={nav === item ? "active" : ""} onClick={() => setNav(item)}><span>{item === "Today" ? "☀" : item === "Calendar" ? "□" : item === "Tasks" ? "✓" : item === "Notes" ? "▤" : "⇄"}</span>{item === "Integrations" ? "Connect" : item}</button>)}
+          {["Today", "Calendar", "Tasks", "People", "Notes", "Integrations"].map((item) => <button key={item} className={nav === item ? "active" : ""} onClick={() => setNav(item)}><span>{item === "Today" ? "☀" : item === "Calendar" ? "□" : item === "Tasks" ? "✓" : item === "People" ? "♧" : item === "Notes" ? "▤" : "⇄"}</span>{item === "Integrations" ? "Connect" : item}</button>)}
         </nav>
       </section>
     </main>
@@ -231,6 +240,8 @@ function ModuleView({
   addEmailAccount,
   removeEmailAccount,
   searchQuery,
+  sources,
+  onSetup,
 }: {
   name: string;
   tasks: Task[];
@@ -245,14 +256,16 @@ function ModuleView({
   addEmailAccount: (event: React.FormEvent<HTMLFormElement>) => void;
   removeEmailAccount: (id: number) => void;
   searchQuery: string;
+  sources: ReturnType<typeof useConnectedWorkspace>;
+  onSetup: () => void;
 }) {
   const descriptions: Record<string, string> = {
     Inbox: "Everything that needs a decision, gathered from your connected tools.",
     Calendar: "One schedule across work and personal calendars.",
     Tasks: "Plan, prioritize, and complete work from one reliable list.",
     Projects: "See momentum, ownership, and the next milestone at a glance.",
-    Notes: "Search notes synced securely from your iPhone.",
-    Integrations: "Connect your tools once. Relay keeps changes moving both ways.",
+    Notes: "Explore the sample Notes search experience.",
+    Integrations: "Choose the accounts and information you want in Relay.",
   };
 
   return (
@@ -265,21 +278,22 @@ function ModuleView({
 
       {name === "Integrations" && (
         <div className="integration-layout">
+          <SourceConnections sources={sources} />
           <section className="module-card integration-intro">
-            <span className="section-kicker">Two-way sync</span>
+            <span className="section-kicker">Integration roadmap</span>
             <h2>Your tools stay the source of truth.</h2>
-            <p>Edit a due date, complete an issue, or move a meeting in Relay and the change is sent back to the connected service. Every sync is logged so you can see what changed.</p>
+            <p>Google Calendar and Contacts use account authorization above. The email, GitHub, Slack, Linear, Notion, and Notes controls below are demo flows; they do not connect to your accounts yet.</p>
             <div className="sync-flow"><span>Email</span><i>⇄</i><span>Relay</span><i>⇄</i><span>Calendar</span><i>⇄</i><span>GitHub</span><i>⇄</i><span>Notes</span></div>
           </section>
 
           <section className="module-card email-connector">
-            <div className="email-connector-heading"><div><span className="section-kicker">Email accounts</span><h2>Add as many accounts as you need</h2></div><span>{emailAccounts.length} connected</span></div>
+            <div className="email-connector-heading"><div><span className="section-kicker">Email accounts · Demo</span><h2>Add as many accounts as you need</h2></div><span>{emailAccounts.length} demo accounts</span></div>
             <form className="email-form" onSubmit={addEmailAccount}>
               <label><span>Provider</span><select value={emailProvider} onChange={(event) => setEmailProvider(event.target.value)}>{emailProviders.map(([provider]) => <option key={provider}>{provider}</option>)}</select></label>
               <label><span>Email address</span><input id="email-address" type="email" required value={emailAddress} onChange={(event) => setEmailAddress(event.target.value)} placeholder="you@example.com" /></label>
               <button type="submit" disabled={emailAccounts.some((account) => account.address === emailAddress.trim().toLowerCase())}>Add account</button>
             </form>
-            {emailAccounts.length > 0 && <div className="email-account-list">{emailAccounts.map((account) => <article key={account.id}><span className="connection-logo">{account.provider[0]}</span><div><strong>{account.address}</strong><small>{account.provider} · Ready to sync</small></div><button onClick={() => removeEmailAccount(account.id)} aria-label={`Remove ${account.address}`}>Remove</button></article>)}</div>}
+            {emailAccounts.length > 0 && <div className="email-account-list">{emailAccounts.map((account) => <article key={account.id}><span className="connection-logo">{account.provider[0]}</span><div><strong>{account.address}</strong><small>{account.provider} · Demo account, not authorized</small></div><button onClick={() => removeEmailAccount(account.id)} aria-label={`Remove ${account.address}`}>Remove</button></article>)}</div>}
           </section>
 
           <div className="connections-grid">
@@ -293,10 +307,10 @@ function ModuleView({
           </div>
 
           <div className="connections-grid">
-            {[["Calendar", "31", "Google Calendar", "Create, move, and focus-block events."], ["GitHub", "⌘", "Repositories", "Track issues, pull requests, and mentions."]].map(([service, mark, type, copy]) => <article className="module-card connection-card" key={service}><div className={`connection-logo ${service.toLowerCase()}`}>{mark}</div><div className="connection-copy"><small>{type}</small><h2>{service}</h2><p>{copy}</p></div><button className={connections[service] ? "connected-button" : "connect-button"} onClick={() => toggleConnection(service)}>{connections[service] ? "✓ Connected" : "Connect"}</button></article>)}
+            {[["GitHub", "⌘", "Repositories · Demo", "Track issues, pull requests, and mentions."]].map(([service, mark, type, copy]) => <article className="module-card connection-card" key={service}><div className={`connection-logo ${service.toLowerCase()}`}>{mark}</div><div className="connection-copy"><small>{type}</small><h2>{service}</h2><p>{copy}</p></div><button className="connect-button" onClick={() => toggleConnection(service)}>{connections[service] ? "Demo enabled" : "Try demo"}</button></article>)}
           </div>
           <div className="connections-grid">
-            {[["Slack", "S", "Team messages", "Track mentions, saved messages, and follow-ups."], ["Linear", "L", "Product work", "Sync issues, cycles, projects, and due dates."], ["Notion", "N", "Docs & databases", "Bring action items, decisions, and project pages into Relay."], ["Apple Notes", "▤", "iPhone bridge", "Search your notes through the Relay iPhone companion."]].map(([service, mark, type, copy]) => <article className="module-card connection-card" key={service}><div className={`connection-logo ${service.toLowerCase().replace(" ", "-")}`}>{mark}</div><div className="connection-copy"><small>{type}</small><h2>{service}</h2><p>{copy}</p></div><button className={connections[service] ? "connected-button" : "connect-button"} onClick={() => toggleConnection(service)}>{connections[service] ? "✓ Connected" : service === "Apple Notes" ? "Set up iPhone" : "Connect"}</button></article>)}
+            {[["Slack", "S", "Team messages", "Track mentions, saved messages, and follow-ups."], ["Linear", "L", "Product work", "Sync issues, cycles, projects, and due dates."], ["Notion", "N", "Docs & databases", "Bring action items, decisions, and project pages into Relay."], ["Apple Notes", "▤", "Planned bridge", "Explore sample notes. Device access is not available yet."]].map(([service, mark, type, copy]) => <article className="module-card connection-card" key={service}><div className={`connection-logo ${service.toLowerCase().replace(" ", "-")}`}>{mark}</div><div className="connection-copy"><small>{type} · Demo</small><h2>{service}</h2><p>{copy}</p></div><button className="connect-button" onClick={() => toggleConnection(service)}>{connections[service] ? "Demo enabled" : "Try demo"}</button></article>)}
           </div>
           <div className="permission-note"><span>◎</span><div><strong>You stay in control</strong><p>Connections use the minimum permissions needed. You can pause syncing or disconnect a service at any time.</p></div></div>
         </div>
@@ -326,16 +340,7 @@ function ModuleView({
         </div>
       )}
 
-      {name === "Calendar" && (
-        <section className="module-card week-card">
-          <div className="week-days">{["Mon 7", "Tue 8", "Wed 9", "Thu 10", "Fri 11"].map((day) => <strong className={day.includes("Tue") ? "selected" : ""} key={day}>{day}</strong>)}</div>
-          <div className="week-grid">
-            <div className="week-times"><span>9 AM</span><span>11 AM</span><span>1 PM</span><span>3 PM</span><span>5 PM</span></div>
-            <div className="week-events"><article className="week-event one">Product sync<small>9:30 · Studio</small></article><article className="week-event two">Q4 deep work<small>11:00 · Focus</small></article><article className="week-event three">Design review<small>3:30 · Client</small></article></div>
-          </div>
-        </section>
-      )}
-
+      {name === "Calendar" && <ConnectedCalendar sources={sources} onSetup={onSetup} />}
       {name === "Notes" && <NotesView query={searchQuery} connected={Boolean(connections["Apple Notes"])} connect={() => toggleConnection("Apple Notes")} />}
 
       {name === "Projects" && (
@@ -355,15 +360,15 @@ function NotesView({ query, connected, connect }: { query: string; connected: bo
   const matches = notes.filter((note) => `${note.title} ${note.folder} ${note.body}`.toLowerCase().includes(query.trim().toLowerCase()));
   const active = matches.find((note) => note.id === selected) ?? matches[0];
 
-  if (!connected) return <section className="module-card notes-setup"><span className="notes-app-icon">▤</span><div><span className="section-kicker">Relay for iPhone</span><h2>Bring your Apple Notes into Relay</h2><p>Install the private Relay Shortcut on your iPhone, choose the folders you want to share, and your searchable index stays in sync.</p></div><button className="connect-button" onClick={connect}>Set up iPhone</button></section>;
+  if (!connected) return <section className="module-card notes-setup"><span className="notes-app-icon">▤</span><div><span className="section-kicker">Relay for iPhone · Planned</span><h2>Explore Apple Notes search</h2><p>These are sample notes. A Notes Shortcut bridge has not been built. The Calendar and Contacts companion does not access Apple Notes.</p></div><button className="connect-button" onClick={connect}>View sample notes</button></section>;
 
   return <div className="notes-browser">
     <aside className="module-card notes-list">
-      <div className="notes-list-heading"><span>{matches.length} notes</span><strong>Synced just now</strong></div>
+      <div className="notes-list-heading"><span>{matches.length} sample notes</span><strong>Demo data</strong></div>
       {matches.length ? matches.map((note) => <button key={note.id} className={active?.id === note.id ? "note-result active" : "note-result"} onClick={() => setSelected(note.id)}><span><strong>{note.title}</strong><small>{note.preview}</small></span><time>{note.updated}</time></button>) : <div className="notes-empty"><strong>No notes found</strong><span>Try another word or phrase.</span></div>}
     </aside>
     <article className="module-card note-preview">
-      {active ? <><header><div><span>{active.folder}</span><time>{active.updated}</time></div><button>Open on iPhone ↗</button></header><pre>{active.body}</pre><footer>Synced from Apple Notes via Relay for iPhone</footer></> : <div className="notes-empty"><strong>Nothing to preview</strong></div>}
+      {active ? <><header><div><span>{active.folder}</span><time>{active.updated}</time></div><span>Sample note</span></header><pre>{active.body}</pre><footer>Demo only · Apple Notes access is not connected</footer></> : <div className="notes-empty"><strong>Nothing to preview</strong></div>}
     </article>
   </div>;
 }
