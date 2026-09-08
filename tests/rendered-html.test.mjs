@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 async function render() {
@@ -24,4 +25,8 @@ test("server-renders the Relay dashboard", async () => {
   assert.match(html, /Today’s focus/);
   assert.match(html, /manifest\.webmanifest/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape/);
+
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /Add as many accounts as you need/);
+  for (const provider of ["Gmail", "Outlook", "Yahoo", "Private Email", "Other email"]) assert.match(page, new RegExp(provider));
 });

@@ -11,6 +11,16 @@ type Task = {
   priority?: boolean;
 };
 
+type EmailAccount = { id: number; provider: string; address: string };
+
+const emailProviders = [
+  ["Gmail", "M", "Google", "Gmail and Google Workspace"],
+  ["Outlook", "O", "Microsoft", "Outlook, Hotmail, and Microsoft 365"],
+  ["Yahoo", "Y!", "Yahoo", "Yahoo Mail accounts"],
+  ["Private Email", "P", "Namecheap", "Private Email accounts"],
+  ["Other email", "@", "IMAP / SMTP", "iCloud, Fastmail, and other providers"],
+];
+
 const initialTasks: Task[] = [
   { id: 1, title: "Review homepage pull request", meta: "Launch project · Due 10:30 AM", source: "GitHub", done: false, priority: true },
   { id: 2, title: "Send revised proposal to Maya", meta: "Client work · Due 1:00 PM", source: "Gmail", done: false, priority: true },
@@ -32,7 +42,10 @@ export default function Home() {
   const [nav, setNav] = useState("Today");
   const [customizing, setCustomizing] = useState(false);
   const [compact, setCompact] = useState(false);
-  const [connections, setConnections] = useState<Record<string, boolean>>({ Gmail: false, Outlook: false, Calendar: false, GitHub: false });
+  const [connections, setConnections] = useState<Record<string, boolean>>({ Calendar: false, GitHub: false });
+  const [emailAccounts, setEmailAccounts] = useState<EmailAccount[]>([]);
+  const [emailProvider, setEmailProvider] = useState("Gmail");
+  const [emailAddress, setEmailAddress] = useState("");
   const completed = useMemo(() => tasks.filter((task) => task.done).length, [tasks]);
 
   function toggleTask(id: number) {
@@ -107,6 +120,19 @@ export default function Home() {
             toggleTask={toggleTask}
             connections={connections}
             toggleConnection={(name) => setConnections((current) => ({ ...current, [name]: !current[name] }))}
+            emailAccounts={emailAccounts}
+            emailProvider={emailProvider}
+            emailAddress={emailAddress}
+            setEmailProvider={setEmailProvider}
+            setEmailAddress={setEmailAddress}
+            addEmailAccount={(event) => {
+              event.preventDefault();
+              const address = emailAddress.trim().toLowerCase();
+              if (!address || emailAccounts.some((account) => account.address === address)) return;
+              setEmailAccounts((current) => [...current, { id: Date.now(), provider: emailProvider, address }]);
+              setEmailAddress("");
+            }}
+            removeEmailAccount={(id) => setEmailAccounts((current) => current.filter((account) => account.id !== id))}
           />
         )}
 
@@ -188,12 +214,26 @@ function ModuleView({
   toggleTask,
   connections,
   toggleConnection,
+  emailAccounts,
+  emailProvider,
+  emailAddress,
+  setEmailProvider,
+  setEmailAddress,
+  addEmailAccount,
+  removeEmailAccount,
 }: {
   name: string;
   tasks: Task[];
   toggleTask: (id: number) => void;
   connections: Record<string, boolean>;
   toggleConnection: (name: string) => void;
+  emailAccounts: EmailAccount[];
+  emailProvider: string;
+  emailAddress: string;
+  setEmailProvider: (provider: string) => void;
+  setEmailAddress: (address: string) => void;
+  addEmailAccount: (event: React.FormEvent<HTMLFormElement>) => void;
+  removeEmailAccount: (id: number) => void;
 }) {
   const descriptions: Record<string, string> = {
     Inbox: "Everything that needs a decision, gathered from your connected tools.",
@@ -219,19 +259,29 @@ function ModuleView({
             <p>Edit a due date, complete an issue, or move a meeting in Relay and the change is sent back to the connected service. Every sync is logged so you can see what changed.</p>
             <div className="sync-flow"><span>Email</span><i>⇄</i><span>Relay</span><i>⇄</i><span>Calendar</span><i>⇄</i><span>GitHub</span></div>
           </section>
+
+          <section className="module-card email-connector">
+            <div className="email-connector-heading"><div><span className="section-kicker">Email accounts</span><h2>Add as many accounts as you need</h2></div><span>{emailAccounts.length} connected</span></div>
+            <form className="email-form" onSubmit={addEmailAccount}>
+              <label><span>Provider</span><select value={emailProvider} onChange={(event) => setEmailProvider(event.target.value)}>{emailProviders.map(([provider]) => <option key={provider}>{provider}</option>)}</select></label>
+              <label><span>Email address</span><input id="email-address" type="email" required value={emailAddress} onChange={(event) => setEmailAddress(event.target.value)} placeholder="you@example.com" /></label>
+              <button type="submit" disabled={emailAccounts.some((account) => account.address === emailAddress.trim().toLowerCase())}>Add account</button>
+            </form>
+            {emailAccounts.length > 0 && <div className="email-account-list">{emailAccounts.map((account) => <article key={account.id}><span className="connection-logo">{account.provider[0]}</span><div><strong>{account.address}</strong><small>{account.provider} · Ready to sync</small></div><button onClick={() => removeEmailAccount(account.id)} aria-label={`Remove ${account.address}`}>Remove</button></article>)}</div>}
+          </section>
+
           <div className="connections-grid">
-            {[
-              ["Gmail", "M", "Email", "Turn messages into tasks and sync labels."],
-              ["Outlook", "O", "Email + calendar", "Sync Microsoft mail and events."],
-              ["Calendar", "31", "Google Calendar", "Create, move, and focus-block events."],
-              ["GitHub", "⌘", "Repositories", "Track issues, pull requests, and mentions."],
-            ].map(([service, mark, type, copy]) => (
+            {emailProviders.map(([service, mark, type, copy]) => (
               <article className="module-card connection-card" key={service}>
-                <div className={`connection-logo ${service.toLowerCase()}`}>{mark}</div>
+                <div className={`connection-logo ${service.toLowerCase().replace(" ", "-")}`}>{mark}</div>
                 <div className="connection-copy"><small>{type}</small><h2>{service}</h2><p>{copy}</p></div>
-                <button className={connections[service] ? "connected-button" : "connect-button"} onClick={() => toggleConnection(service)}>{connections[service] ? "✓ Connected" : "Connect"}</button>
+                <button className="connect-button" onClick={() => { setEmailProvider(service); document.getElementById("email-address")?.focus(); }}>{emailAccounts.some((account) => account.provider === service) ? "Add another" : "Add account"}</button>
               </article>
             ))}
+          </div>
+
+          <div className="connections-grid">
+            {[["Calendar", "31", "Google Calendar", "Create, move, and focus-block events."], ["GitHub", "⌘", "Repositories", "Track issues, pull requests, and mentions."]].map(([service, mark, type, copy]) => <article className="module-card connection-card" key={service}><div className={`connection-logo ${service.toLowerCase()}`}>{mark}</div><div className="connection-copy"><small>{type}</small><h2>{service}</h2><p>{copy}</p></div><button className={connections[service] ? "connected-button" : "connect-button"} onClick={() => toggleConnection(service)}>{connections[service] ? "✓ Connected" : "Connect"}</button></article>)}
           </div>
           <div className="permission-note"><span>◎</span><div><strong>You stay in control</strong><p>Connections use the minimum permissions needed. You can pause syncing or disconnect a service at any time.</p></div></div>
         </div>
