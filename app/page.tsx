@@ -13,6 +13,13 @@ type Task = {
 
 type EmailAccount = { id: number; provider: string; address: string };
 
+const notes = [
+  { id: 1, title: "Q4 launch ideas", folder: "Work", updated: "Today, 8:42 AM", preview: "Homepage story, customer proof, launch checklist…", body: "Q4 launch ideas\n\n• Tighten the homepage story\n• Ask Maya for two customer quotes\n• Draft the launch checklist\n• Schedule the final review" },
+  { id: 2, title: "Books to read", folder: "Personal", updated: "Yesterday", preview: "The Creative Act, Tomorrow and Tomorrow…", body: "Books to read\n\nThe Creative Act\nTomorrow, and Tomorrow, and Tomorrow\nThe Design of Everyday Things" },
+  { id: 3, title: "Client kickoff notes", folder: "Client work", updated: "Sep 5", preview: "Primary goal: reduce onboarding time…", body: "Client kickoff notes\n\nPrimary goal: reduce onboarding time.\nDecision makers: Maya and Jordan.\nNext step: send revised scope by Friday." },
+  { id: 4, title: "Weekend errands", folder: "Personal", updated: "Sep 3", preview: "Dentist, groceries, return package…", body: "Weekend errands\n\nDentist appointment\nGroceries\nReturn package\nPick up dry cleaning" },
+];
+
 const emailProviders = [
   ["Gmail", "M", "Google", "Gmail and Google Workspace"],
   ["Outlook", "O", "Microsoft", "Outlook, Hotmail, and Microsoft 365"],
@@ -46,6 +53,7 @@ export default function Home() {
   const [emailAccounts, setEmailAccounts] = useState<EmailAccount[]>([]);
   const [emailProvider, setEmailProvider] = useState("Gmail");
   const [emailAddress, setEmailAddress] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const completed = useMemo(() => tasks.filter((task) => task.done).length, [tasks]);
 
   function toggleTask(id: number) {
@@ -68,9 +76,9 @@ export default function Home() {
         </div>
 
         <nav className="main-nav" aria-label="Main navigation">
-          {["Today", "Inbox", "Calendar", "Tasks", "Projects", "Integrations"].map((item) => (
+          {["Today", "Inbox", "Calendar", "Tasks", "Projects", "Notes", "Integrations"].map((item) => (
             <button key={item} className={nav === item ? "nav-item active" : "nav-item"} onClick={() => setNav(item)}>
-              <span className="nav-icon" aria-hidden="true">{item === "Today" ? "☀" : item === "Inbox" ? "↙" : item === "Calendar" ? "□" : item === "Tasks" ? "✓" : item === "Projects" ? "◇" : "⇄"}</span>
+              <span className="nav-icon" aria-hidden="true">{item === "Today" ? "☀" : item === "Inbox" ? "↙" : item === "Calendar" ? "□" : item === "Tasks" ? "✓" : item === "Projects" ? "◇" : item === "Notes" ? "▤" : "⇄"}</span>
               {item}
               {item === "Inbox" && <span className="nav-count">7</span>}
             </button>
@@ -97,7 +105,7 @@ export default function Home() {
       <section className="workspace">
         <header className="topbar">
           <button className="mobile-brand" aria-label="Open navigation"><span className="brand-mark small"><i /><i /><i /></span></button>
-          <div className="search"><span>⌕</span><input aria-label="Search" placeholder="Search everything…" /><kbd>⌘ K</kbd></div>
+          <div className="search"><span>⌕</span><input aria-label="Search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder={nav === "Notes" ? "Search iPhone Notes…" : "Search everything…"} /><kbd>⌘ K</kbd></div>
           <div className="top-actions">
             <button className={customizing ? "customize-button active" : "customize-button"} onClick={() => setCustomizing((value) => !value)}>Customize</button>
             <button className="icon-button" aria-label="Notifications">♢<span className="notice-dot" /></button>
@@ -133,6 +141,7 @@ export default function Home() {
               setEmailAddress("");
             }}
             removeEmailAccount={(id) => setEmailAccounts((current) => current.filter((account) => account.id !== id))}
+            searchQuery={searchQuery}
           />
         )}
 
@@ -201,7 +210,7 @@ export default function Home() {
         </div>
 
         <nav className="mobile-nav" aria-label="Mobile navigation">
-          {["Today", "Inbox", "Calendar", "Tasks", "Integrations"].map((item) => <button key={item} className={nav === item ? "active" : ""} onClick={() => setNav(item)}><span>{item === "Today" ? "☀" : item === "Inbox" ? "↙" : item === "Calendar" ? "□" : item === "Tasks" ? "✓" : "⇄"}</span>{item === "Integrations" ? "Connect" : item}</button>)}
+          {["Today", "Calendar", "Tasks", "Notes", "Integrations"].map((item) => <button key={item} className={nav === item ? "active" : ""} onClick={() => setNav(item)}><span>{item === "Today" ? "☀" : item === "Calendar" ? "□" : item === "Tasks" ? "✓" : item === "Notes" ? "▤" : "⇄"}</span>{item === "Integrations" ? "Connect" : item}</button>)}
         </nav>
       </section>
     </main>
@@ -221,6 +230,7 @@ function ModuleView({
   setEmailAddress,
   addEmailAccount,
   removeEmailAccount,
+  searchQuery,
 }: {
   name: string;
   tasks: Task[];
@@ -234,12 +244,14 @@ function ModuleView({
   setEmailAddress: (address: string) => void;
   addEmailAccount: (event: React.FormEvent<HTMLFormElement>) => void;
   removeEmailAccount: (id: number) => void;
+  searchQuery: string;
 }) {
   const descriptions: Record<string, string> = {
     Inbox: "Everything that needs a decision, gathered from your connected tools.",
     Calendar: "One schedule across work and personal calendars.",
     Tasks: "Plan, prioritize, and complete work from one reliable list.",
     Projects: "See momentum, ownership, and the next milestone at a glance.",
+    Notes: "Search notes synced securely from your iPhone.",
     Integrations: "Connect your tools once. Relay keeps changes moving both ways.",
   };
 
@@ -257,7 +269,7 @@ function ModuleView({
             <span className="section-kicker">Two-way sync</span>
             <h2>Your tools stay the source of truth.</h2>
             <p>Edit a due date, complete an issue, or move a meeting in Relay and the change is sent back to the connected service. Every sync is logged so you can see what changed.</p>
-            <div className="sync-flow"><span>Email</span><i>⇄</i><span>Relay</span><i>⇄</i><span>Calendar</span><i>⇄</i><span>GitHub</span></div>
+            <div className="sync-flow"><span>Email</span><i>⇄</i><span>Relay</span><i>⇄</i><span>Calendar</span><i>⇄</i><span>GitHub</span><i>⇄</i><span>Notes</span></div>
           </section>
 
           <section className="module-card email-connector">
@@ -282,6 +294,9 @@ function ModuleView({
 
           <div className="connections-grid">
             {[["Calendar", "31", "Google Calendar", "Create, move, and focus-block events."], ["GitHub", "⌘", "Repositories", "Track issues, pull requests, and mentions."]].map(([service, mark, type, copy]) => <article className="module-card connection-card" key={service}><div className={`connection-logo ${service.toLowerCase()}`}>{mark}</div><div className="connection-copy"><small>{type}</small><h2>{service}</h2><p>{copy}</p></div><button className={connections[service] ? "connected-button" : "connect-button"} onClick={() => toggleConnection(service)}>{connections[service] ? "✓ Connected" : "Connect"}</button></article>)}
+          </div>
+          <div className="connections-grid">
+            {[["Slack", "S", "Team messages", "Track mentions, saved messages, and follow-ups."], ["Linear", "L", "Product work", "Sync issues, cycles, projects, and due dates."], ["Notion", "N", "Docs & databases", "Bring action items, decisions, and project pages into Relay."], ["Apple Notes", "▤", "iPhone bridge", "Search your notes through the Relay iPhone companion."]].map(([service, mark, type, copy]) => <article className="module-card connection-card" key={service}><div className={`connection-logo ${service.toLowerCase().replace(" ", "-")}`}>{mark}</div><div className="connection-copy"><small>{type}</small><h2>{service}</h2><p>{copy}</p></div><button className={connections[service] ? "connected-button" : "connect-button"} onClick={() => toggleConnection(service)}>{connections[service] ? "✓ Connected" : service === "Apple Notes" ? "Set up iPhone" : "Connect"}</button></article>)}
           </div>
           <div className="permission-note"><span>◎</span><div><strong>You stay in control</strong><p>Connections use the minimum permissions needed. You can pause syncing or disconnect a service at any time.</p></div></div>
         </div>
@@ -321,6 +336,8 @@ function ModuleView({
         </section>
       )}
 
+      {name === "Notes" && <NotesView query={searchQuery} connected={Boolean(connections["Apple Notes"])} connect={() => toggleConnection("Apple Notes")} />}
+
       {name === "Projects" && (
         <div className="project-grid">
           {[["Website launch", "Ship the new marketing experience", "72", "purple"], ["Client onboarding", "A smoother first 30 days", "48", "coral"], ["Q4 planning", "Set priorities for the next quarter", "31", "green"]].map(([title, copy, progress, color]) => (
@@ -331,4 +348,22 @@ function ModuleView({
       )}
     </section>
   );
+}
+
+function NotesView({ query, connected, connect }: { query: string; connected: boolean; connect: () => void }) {
+  const [selected, setSelected] = useState(notes[0].id);
+  const matches = notes.filter((note) => `${note.title} ${note.folder} ${note.body}`.toLowerCase().includes(query.trim().toLowerCase()));
+  const active = matches.find((note) => note.id === selected) ?? matches[0];
+
+  if (!connected) return <section className="module-card notes-setup"><span className="notes-app-icon">▤</span><div><span className="section-kicker">Relay for iPhone</span><h2>Bring your Apple Notes into Relay</h2><p>Install the private Relay Shortcut on your iPhone, choose the folders you want to share, and your searchable index stays in sync.</p></div><button className="connect-button" onClick={connect}>Set up iPhone</button></section>;
+
+  return <div className="notes-browser">
+    <aside className="module-card notes-list">
+      <div className="notes-list-heading"><span>{matches.length} notes</span><strong>Synced just now</strong></div>
+      {matches.length ? matches.map((note) => <button key={note.id} className={active?.id === note.id ? "note-result active" : "note-result"} onClick={() => setSelected(note.id)}><span><strong>{note.title}</strong><small>{note.preview}</small></span><time>{note.updated}</time></button>) : <div className="notes-empty"><strong>No notes found</strong><span>Try another word or phrase.</span></div>}
+    </aside>
+    <article className="module-card note-preview">
+      {active ? <><header><div><span>{active.folder}</span><time>{active.updated}</time></div><button>Open on iPhone ↗</button></header><pre>{active.body}</pre><footer>Synced from Apple Notes via Relay for iPhone</footer></> : <div className="notes-empty"><strong>Nothing to preview</strong></div>}
+    </article>
+  </div>;
 }

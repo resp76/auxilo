@@ -29,4 +29,7 @@ test("server-renders the Relay dashboard", async () => {
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   assert.match(page, /Add as many accounts as you need/);
   for (const provider of ["Gmail", "Outlook", "Yahoo", "Private Email", "Other email"]) assert.match(page, new RegExp(provider));
+  for (const integration of ["Slack", "Linear", "Notion", "Apple Notes"]) assert.match(page, new RegExp(integration));
+  assert.match(page, /Search iPhone Notes/);
+  assert.match(page, /Relay for iPhone/);
 });
