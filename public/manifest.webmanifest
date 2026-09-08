@@ -1,0 +1,18 @@
+{
+  "name": "Relay — Your day, in sync",
+  "short_name": "Relay",
+  "description": "A calm command center for tasks, email, calendar, GitHub, reminders, and projects.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fbfaf8",
+  "theme_color": "#fbfaf8",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
