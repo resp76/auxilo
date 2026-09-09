@@ -256,6 +256,14 @@ dialog.reminder-dialog:not([open]) { display: none; }
 .reminder-dialog form { display: grid; gap: 13px; }
 .reminder-time { white-space: normal; display: inline-block; }
 .quick-meta > span { font-size: 11px; color: var(--muted); }
+.policy-page { min-height: 100vh; padding: 72px 24px; background: #fbfaf8; color: #29262d; }
+.policy-page article { width: min(680px, 100%); margin: 0 auto; }
+.policy-brand { color: #6654e8; font-weight: 800; text-decoration: none; }
+.policy-page h1 { margin: 28px 0 8px; font: 52px/1.05 Georgia, serif; letter-spacing: -.035em; }
+.policy-date { margin-bottom: 40px; color: #847d87; }
+.policy-page h2 { margin: 34px 0 10px; font: 25px/1.2 Georgia, serif; }
+.policy-page p { font-size: 16px; line-height: 1.7; }
+.policy-page a { color: #5944dc; }
 @media (max-width: 720px) {
   .sidebar.mobile-open { display: flex; width: min(300px, 85vw); top: 62px; bottom: 74px; height: auto; box-shadow: 20px 0 50px #0003; }
   .reminder-button { width: 44px; height: 44px; }
