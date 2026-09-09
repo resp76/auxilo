@@ -4,6 +4,8 @@ import handler from "vinext/server/app-router-entry";
 
 interface Env {
   GOOGLE_CLIENT_ID?: string;
+  SUPABASE_URL?: string;
+  SUPABASE_PUBLISHABLE_KEY?: string;
   ASSETS: Fetcher;
   DB: D1Database;
   IMAGES: {
@@ -31,6 +33,13 @@ const worker = {
     const url = new URL(request.url);
     if (url.pathname === "/api/google/config") {
       return Response.json({ clientId: env.GOOGLE_CLIENT_ID || "" }, { headers: { "Cache-Control": "no-store" } });
+    }
+
+    if (url.pathname === "/api/auth/config") {
+      return Response.json(
+        { url: env.SUPABASE_URL || "", publishableKey: env.SUPABASE_PUBLISHABLE_KEY || "" },
+        { headers: { "Cache-Control": "no-store" } },
+      );
     }
 
     if (url.pathname === "/_vinext/image") {

@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/.pnpm-store/
 /.pnp
 .pnp.*
 .yarn/*
@@ -30,6 +31,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +41,11 @@ yarn-error.log*
 /outputs/
 /work/
 *.tsbuildinfo
+
+# Xcode local state and build products
+**/xcuserdata/
+**/DerivedData/
+*.xcresult/
+
+# Local browser QA artifacts
+/.playwright-mcp/

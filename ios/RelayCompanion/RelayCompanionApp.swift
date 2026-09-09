@@ -28,7 +28,7 @@ struct RelayEvent: Codable {
     let allDay: Bool
 }
 
-struct RelaySnapshot: Codable {
+struct RelaySnapshot: Encodable {
     let version = 1
     let exportedAt: String
     let contacts: [RelayContact]
@@ -140,7 +140,7 @@ struct RelayCompanionView: View {
                             let event = EKEvent(eventStore: store)
                             event.calendar = calendars.first(where: { $0.allowsContentModifications && selectedCalendars.contains($0.calendarIdentifier) })
                             event.startDate = Date()
-                            event.endDate = Date().addingTimeInterval(3600)
+                            event.endDate = event.startDate.addingTimeInterval(3600)
                             editor = EditableEvent(event: event)
                         }
                     }
@@ -199,7 +199,7 @@ struct RelayCompanionView: View {
         refreshEvents()
         guard contacts.count <= 10000, events.count <= 10000 else { message = "Too many records. Choose fewer contacts or calendars (10,000 maximum each)."; return }
         let iso = ISO8601DateFormatter()
-        let dateOnly = DateFormatter(); dateOnly.locale = Locale(identifier: "en_US_POSIX"); dateOnly.dateFormat = "yyyy-MM-dd"
+        let dateOnly = DateFormatter(); dateOnly.locale = Locale(identifier: "en_US_POSIX"); dateOnly.calendar = Calendar(identifier: .gregorian); dateOnly.dateFormat = "yyyy-MM-dd"
         let snapshot = RelaySnapshot(exportedAt: iso.string(from: Date()), contacts: contacts, events: events.map { event in
             RelayEvent(id: "\(event.eventIdentifier ?? UUID().uuidString):\(iso.string(from: event.startDate))", title: event.title ?? "Untitled event", start: event.isAllDay ? dateOnly.string(from: event.startDate) : iso.string(from: event.startDate), end: event.isAllDay ? dateOnly.string(from: event.endDate) : iso.string(from: event.endDate), calendarId: event.calendar.calendarIdentifier, calendarName: event.calendar.title, allDay: event.isAllDay)
         })

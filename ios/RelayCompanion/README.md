@@ -4,11 +4,26 @@ Source for an iOS 17+ SwiftUI companion. This is not a signed app or an App Stor
 
 ## Build on a Mac with Xcode
 
-1. Create a new **iOS App**, interface **SwiftUI**, language **Swift**, minimum iOS **17.0**. Name it RelayCompanion and choose a unique bundle identifier and your signing team.
-2. Delete the generated app and ContentView Swift files from that new project. Add `RelayCompanionApp.swift` to the application target.
-3. In Target → Info, add `NSCalendarsFullAccessUsageDescription` with: “Relay reads calendars you select and lets you edit events. Only selected calendar snapshots are exported when you choose Export.”
-4. Add `NSContactsUsageDescription` with: “Relay uses contacts you select for search and an export you control.” Selection currently uses the system contact picker; it does not enumerate the entire contact store.
-5. Build and run on your own iPhone. Review the system permission prompts.
+1. Open `RelayCompanion.xcodeproj` in Xcode 26.6 or later.
+2. Select the shared **RelayCompanion** scheme and an iPhone simulator, then **Product → Run**.
+3. To run on your iPhone, choose your Apple development team in **Signing & Capabilities**, change the bundle identifier if needed, and select your connected phone. Signing credentials are not included.
+4. Run **Product → Test** for the UI tests. The contact-selection test uses the standard simulator contact John Appleseed; run it on a fresh simulator with the sample contacts.
+
+From the repository root:
+
+```sh
+xcodebuild -project ios/RelayCompanion/RelayCompanion.xcodeproj \
+  -scheme RelayCompanion -configuration Debug \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -derivedDataPath /tmp/relay-xcode-build CODE_SIGNING_ALLOWED=NO test
+
+xcodebuild -project ios/RelayCompanion/RelayCompanion.xcodeproj \
+  -scheme RelayCompanion -configuration Release \
+  -destination 'generic/platform=iOS' \
+  -derivedDataPath /tmp/relay-xcode-device CODE_SIGNING_ALLOWED=NO build
+```
+
+The second command produces an unsigned device build, not an installable distribution. Xcode's Archive/Distribute workflow requires your Apple team, provisioning, and App Store Connect setup.
 
 ## What works in the source
 
@@ -22,7 +37,7 @@ The web import is read only and held in the current tab's memory. Re-export and 
 
 ## Validation status and device checklist
 
-The authoring environment has Command Line Tools but no iOS SDK or simulator. This source has not been built, signed, or tested on an iPhone. Before distribution:
+Validated September 9, 2026 using Xcode 26.6 and the iOS 26.5 SDK: simulator Debug build, unsigned device Release build, and three passing simulator UI tests (contact picker dismissal, contact selection/search/clear, and export file picker). No physical-device or distribution signing validation has been performed. Before distribution:
 
 - Build in Xcode and test picker cancellation, selected contacts, empty selection, and calendar permission denied/revoked.
 - Select calendars from more than one account and check that unselected events are excluded.

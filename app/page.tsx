@@ -1,17 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ConnectedCalendar, PeopleWorkspace, SourceConnections, useConnectedWorkspace } from "./connected-workspace";
 import type { Person } from "./people-calendar";
+import { AuthGate, useRelayAuth } from "./auth-gate";
 
-type Task = {
-  id: number;
-  title: string;
-  meta: string;
-  source: "GitHub" | "Gmail" | "Personal" | "Calendar";
-  done: boolean;
-  priority?: boolean;
-};
+import { dueReminders, filterTasks, parseTasks, reminderInstant, type Task } from "./task-reminders";
 
 type EmailAccount = { id: number; provider: string; address: string };
 
@@ -45,9 +39,44 @@ const iconFor: Record<Task["source"], string> = {
   Calendar: "□",
 };
 
+function formatReminder(value: string) {
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+}
+
+function localDateTimeValue(date: Date) {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+}
+
 export default function Home() {
-  const [tasks, setTasks] = useState(initialTasks);
+  return <AuthGate><RelayDashboard /></AuthGate>;
+}
+
+function RelayDashboard() {
+  const { user, signOut } = useRelayAuth();
+  const displayName = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split("@")[0] || "there";
+  const initials = displayName.split(/\s+/).slice(0, 2).map((part: string) => part[0]).join("").toUpperCase();
+  const taskStorageKey = `relay.tasks.${user?.id || user?.email || "demo"}`;
+  const [savedTasks] = useState(() => {
+    if (typeof window === "undefined") return { tasks: initialTasks, error: "" };
+    try {
+      const raw = window.localStorage.getItem(taskStorageKey);
+      return { tasks: raw ? parseTasks(raw) : initialTasks, error: "" };
+    } catch {
+      return { tasks: initialTasks, error: "Saved tasks could not be read. Your original data has been preserved. Changes in this tab will not be saved; restore browser storage and reload." };
+    }
+  });
+  const [tasks, setTasks] = useState<Task[]>(savedTasks.tasks);
+  const [clock, setClock] = useState(() => Date.now());
+  const [storageError, setStorageError] = useState(savedTasks.error);
+  const reminderDialog = useRef<HTMLDialogElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [newTask, setNewTask] = useState("");
+  const [newTaskReminder, setNewTaskReminder] = useState("");
+  const [quickDetails, setQuickDetails] = useState(false);
+  const [reminderTaskId, setReminderTaskId] = useState<number | null>(null);
+  const [reminderValue, setReminderValue] = useState("");
+  const [reminderNotice, setReminderNotice] = useState("");
+  const alertedReminders = useRef(new Set<string>());
   const [nav, setNav] = useState("Today");
   const [customizing, setCustomizing] = useState(false);
   const [compact, setCompact] = useState(false);
@@ -57,10 +86,53 @@ export default function Home() {
   const [emailAddress, setEmailAddress] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const sources = useConnectedWorkspace();
+
+  useEffect(() => {
+    if (savedTasks.error) return;
+    try { window.localStorage.setItem(taskStorageKey, JSON.stringify(tasks)); }
+    catch { queueMicrotask(() => setStorageError("Tasks could not be saved on this device. Keep this tab open and check browser storage.")); }
+  }, [savedTasks.error, taskStorageKey, tasks]);
+
+  useEffect(() => {
+    // ponytail: tab timers only; server push is needed for delivery with Relay closed.
+    function showDueReminder() {
+      const now = Date.now();
+      setClock(now);
+      const due = dueReminders(tasks, alertedReminders.current, now);
+      if (!due.length) return;
+      setReminderNotice(`Reminder: ${due.map(task => task.title).join("; ")}`);
+      for (const task of due) {
+        alertedReminders.current.add(`${task.id}:${task.reminderAt}`);
+        try {
+          if ("Notification" in window && Notification.permission === "granted") {
+            new Notification("Relay reminder", { body: task.title });
+          }
+        } catch { /* In-app alerts still work when desktop notifications are unavailable. */ }
+      }
+    }
+    const initial = window.setTimeout(showDueReminder, 0);
+    const timer = window.setInterval(showDueReminder, 1000);
+    window.addEventListener("focus", showDueReminder);
+    return () => { clearTimeout(initial); clearInterval(timer); window.removeEventListener("focus", showDueReminder); };
+  }, [tasks]);
+
+  useEffect(() => {
+    if (reminderTaskId !== null) reminderDialog.current?.showModal();
+    else reminderDialog.current?.close();
+  }, [reminderTaskId]);
+
+  function requestNotifications() {
+    if ("Notification" in window && Notification.permission === "default") {
+      void Notification.requestPermission().catch(() => setReminderNotice("Reminder saved. Desktop notifications are unavailable; keep Relay open for in-app alerts."));
+    }
+  }
+
   function followUp(person: Person) {
     setTasks(current => [...current, { id: Date.now(), title: `Follow up with ${person.name}`, meta: `${person.email || person.organization || person.account} · Local task${person.source === "Demo" ? " · Sample contact" : ""}`, source: "Personal", done: false, priority: true }]);
   }
   const completed = useMemo(() => tasks.filter((task) => task.done).length, [tasks]);
+  const reminderTasks = useMemo(() => tasks.filter((task) => !task.done && task.reminderAt), [tasks]);
+  const reminderTask = tasks.find((task) => task.id === reminderTaskId);
 
   function toggleTask(id: number) {
     setTasks((current) => current.map((task) => task.id === id ? { ...task, done: !task.done } : task));
@@ -69,13 +141,46 @@ export default function Home() {
   function addTask() {
     const title = newTask.trim();
     if (!title) return;
-    setTasks((current) => [...current, { id: Date.now(), title, meta: "Personal · Added just now", source: "Personal", done: false, priority: true }]);
+    let reminderAt: string | undefined;
+    try { reminderAt = newTaskReminder ? reminderInstant(newTaskReminder, Date.now()) : undefined; }
+    catch { setReminderNotice("Choose a future time for your reminder."); return; }
+    setTasks((current) => [...current, { id: Date.now(), title, meta: "Personal · Added just now", source: "Personal", done: false, priority: true, reminderAt }]);
+    if (newTaskReminder) {
+      setReminderNotice(`Reminder set for ${title}.`);
+      requestNotifications();
+    }
     setNewTask("");
+    setNewTaskReminder("");
+    setQuickDetails(false);
+  }
+
+  function openReminder(task: Task) {
+    setReminderTaskId(task.id);
+    setReminderValue(localDateTimeValue(new Date(task.reminderAt || Date.now() + 60 * 60_000)));
+  }
+
+  function saveReminder(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!reminderTask) return;
+    let reminderAt: string;
+    try { reminderAt = reminderInstant(reminderValue, Date.now()); }
+    catch { setReminderNotice("Choose a future time for your reminder."); return; }
+    setTasks((current) => current.map((task) => task.id === reminderTask.id ? { ...task, reminderAt } : task));
+    setReminderNotice(`Reminder set for ${reminderTask.title}.`);
+    setReminderTaskId(null);
+    requestNotifications();
+  }
+
+  function removeReminder() {
+    if (!reminderTask) return;
+    setTasks((current) => current.map((task) => task.id === reminderTask.id ? { ...task, reminderAt: undefined } : task));
+    setReminderNotice(`Reminder removed from ${reminderTask.title}.`);
+    setReminderTaskId(null);
   }
 
   return (
     <main className="app-shell">
-      <aside className="sidebar">
+      <aside className={menuOpen ? "sidebar mobile-open" : "sidebar"}>
         <div className="brand" aria-label="Relay home">
           <span className="brand-mark"><i /><i /><i /></span>
           <span>Relay</span>
@@ -83,7 +188,7 @@ export default function Home() {
 
         <nav className="main-nav" aria-label="Main navigation">
           {["Today", "Inbox", "Calendar", "Tasks", "Projects", "People", "Notes", "Integrations"].map((item) => (
-            <button key={item} className={nav === item ? "nav-item active" : "nav-item"} onClick={() => setNav(item)}>
+            <button key={item} className={nav === item ? "nav-item active" : "nav-item"} onClick={() => { setNav(item); setMenuOpen(false); }}>
               <span className="nav-icon" aria-hidden="true">{item === "Today" ? "☀" : item === "Inbox" ? "↙" : item === "Calendar" ? "□" : item === "Tasks" ? "✓" : item === "Projects" ? "◇" : item === "Notes" ? "▤" : "⇄"}</span>
               {item}
               {item === "Inbox" && <span className="nav-count">7</span>}
@@ -93,31 +198,34 @@ export default function Home() {
 
         <div className="sidebar-label">Spaces</div>
         <nav className="spaces" aria-label="Spaces">
-          <button><span className="space-dot purple" />Studio</button>
-          <button><span className="space-dot coral" />Client work</button>
-          <button><span className="space-dot green" />Personal</button>
+          <button disabled title="Spaces are a preview"><span className="space-dot purple" />Studio</button>
+          <button disabled title="Spaces are a preview"><span className="space-dot coral" />Client work</button>
+          <button disabled title="Spaces are a preview"><span className="space-dot green" />Personal</button>
         </nav>
 
         <div className="sidebar-footer">
           <button className="sync-status" onClick={() => setNav("Integrations")}><span className="live-dot" />{sources.sessions.length ? `${sources.sessions.length} Google account(s)` : "Demo workspace · View sources"}</button>
           <div className="profile">
-            <div className="avatar">RE</div>
-            <div><strong>Rold</strong><span>Personal workspace</span></div>
-            <button aria-label="Workspace menu">•••</button>
+            <div className="avatar">{initials}</div>
+            <div><strong>{displayName}</strong><span>{user?.email}</span></div>
+            <button aria-label="Sign out" title="Sign out" onClick={() => void signOut()}>↗</button>
           </div>
         </div>
       </aside>
 
       <section className="workspace">
         <header className="topbar">
-          <button className="mobile-brand" aria-label="Open navigation"><span className="brand-mark small"><i /><i /><i /></span></button>
+          <button className="mobile-brand" aria-label="Open navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><span className="brand-mark small"><i /><i /><i /></span></button>
           <div className="search"><span>⌕</span><input aria-label="Search notes or people" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder={nav === "People" ? "Search people…" : nav === "Notes" ? "Search iPhone Notes…" : "Search people…"} onKeyDown={e => { if (e.key === "Enter" && nav !== "Notes") setNav("People"); }} /></div>
           <div className="top-actions">
             <button className={customizing ? "customize-button active" : "customize-button"} onClick={() => setCustomizing((value) => !value)}>Customize</button>
-            <button className="icon-button" aria-label="Notifications">♢<span className="notice-dot" /></button>
-            <button className="add-button" onClick={() => document.getElementById("quick-add")?.focus()}><span>＋</span> Add task</button>
+            <button className="icon-button" aria-label={`${reminderTasks.length} active reminders`} title="View task reminders" onClick={() => setNav("Tasks")}>♢{reminderTasks.length > 0 && <span className="notice-count">{reminderTasks.length}</span>}</button>
+            <button className="add-button" onClick={() => { setNav("Today"); setMenuOpen(false); setTimeout(() => document.getElementById("quick-add")?.focus(), 0); }}><span>＋</span> Add task</button>
           </div>
         </header>
+
+        {storageError && <p className="source-feedback" role="alert">{storageError}</p>}
+        {reminderNotice && <div className="reminder-toast" role="status"><span>◷</span><strong>{reminderNotice}</strong><button onClick={() => setReminderNotice("")} aria-label="Dismiss reminder">×</button></div>}
 
         {customizing && (
           <section className="customize-strip" aria-label="Dashboard customization">
@@ -151,6 +259,9 @@ export default function Home() {
             searchQuery={searchQuery}
             sources={sources}
             onSetup={() => setNav("Integrations")}
+            openReminder={openReminder}
+            clock={clock}
+            addFromInbox={(title) => { setTasks(current => [...current, { id: Date.now(), title, meta: "Personal · From sample inbox", source: "Personal", done: false, priority: true }]); setNav("Tasks"); }}
           />
         )}
 
@@ -158,9 +269,9 @@ export default function Home() {
           <section className="primary-column">
             <div className="welcome-row">
               <div>
-                <p className="eyebrow">Tuesday, September 8</p>
-                <h1>Good morning, Rold.</h1>
-                <p className="lede">Sample day · Open People or Calendar for connected data.</p>
+                <p className="eyebrow">{new Date(clock).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</p>
+                <h1>Good {new Date(clock).getHours() < 12 ? "morning" : new Date(clock).getHours() < 18 ? "afternoon" : "evening"}, {displayName}.</h1>
+                <p className="lede">Tasks and reminders are saved on this device. Schedule, inbox, and projects below are samples.</p>
               </div>
               <div className="day-score"><strong>{tasks.length - completed}</strong><span>open today</span></div>
             </div>
@@ -175,16 +286,16 @@ export default function Home() {
                 {tasks.filter((task) => task.priority).map((task) => (
                   <article key={task.id} className={task.done ? "task-row is-done" : "task-row"}>
                     <button className="task-check" onClick={() => toggleTask(task.id)} aria-label={`${task.done ? "Reopen" : "Complete"} ${task.title}`}>{task.done ? "✓" : ""}</button>
-                    <div className="task-copy"><h3>{task.title}</h3><p>{task.meta}</p></div>
+                    <div className="task-copy"><h3>{task.title}</h3><p>{task.meta}{task.reminderAt && <span className={Date.parse(task.reminderAt) <= clock && !task.done ? "reminder-time due" : "reminder-time"}> · ◷ {formatReminder(task.reminderAt)}</span>}</p></div>
                     <span className={`source-badge ${task.source.toLowerCase()}`}><b>{iconFor[task.source]}</b>{task.source}</span>
-                    <button className="row-menu" aria-label={`More options for ${task.title}`}>•••</button>
+                    <button className={task.reminderAt ? "reminder-button active" : "reminder-button"} onClick={() => openReminder(task)} aria-label={`${task.reminderAt ? "Edit" : "Set"} reminder for ${task.title}`} title={task.reminderAt ? "Edit reminder" : "Set reminder"}>◷</button>
                   </article>
                 ))}
               </div>
             </section>
 
             <section className="agenda-section">
-              <div className="section-heading"><div><span className="section-kicker">Up next</span><h2>Your schedule</h2></div><button>Open calendar <span>→</span></button></div>
+              <div className="section-heading"><div><span className="section-kicker">Up next</span><h2>Your schedule</h2></div><button onClick={() => setNav("Calendar")}>Open calendar <span>→</span></button></div>
               <div className="agenda-card">
                 <div className="time-column"><span>9 AM</span><span>10 AM</span><span>11 AM</span><span>12 PM</span></div>
                 <div className="events-column">
@@ -199,18 +310,19 @@ export default function Home() {
             <section className="rail-card quick-add">
               <div className="rail-title"><h2>Quick add</h2><span>⌘ ↵</span></div>
               <div className="quick-input"><input id="quick-add" value={newTask} onChange={(event) => setNewTask(event.target.value)} onKeyDown={(event) => event.key === "Enter" && addTask()} placeholder="What needs doing?" /><button onClick={addTask} aria-label="Add quick task">↑</button></div>
-              <div className="quick-meta"><button><span className="space-dot purple" />Today</button><button>＋ Details</button></div>
+              <div className="quick-meta"><span><span className="space-dot purple" />Personal task</span><button aria-expanded={quickDetails} onClick={() => setQuickDetails((value) => !value)}>＋ Details</button></div>
+              {quickDetails && <label className="quick-reminder"><span>Remind me</span><input type="datetime-local" min={localDateTimeValue(new Date(clock))} value={newTaskReminder} onChange={(event) => setNewTaskReminder(event.target.value)} /></label>}
             </section>
 
             <section className="rail-card inbox-card">
-              <div className="rail-title"><div><span className="section-kicker">Needs a look</span><h2>Inbox</h2></div><button>View all</button></div>
+              <div className="rail-title"><div><span className="section-kicker">Needs a look</span><h2>Inbox</h2></div><button onClick={() => setNav("Inbox")}>View all</button></div>
               <article className="inbox-item"><span className="source-icon gmail">M</span><div><strong>Maya replied to “Project scope”</strong><small>Gmail · 18 min ago</small></div><span className="unread" /></article>
               <article className="inbox-item"><span className="source-icon github">⌘</span><div><strong>You were requested on #184</strong><small>GitHub · 43 min ago</small></div><span className="unread" /></article>
               <article className="inbox-item"><span className="source-icon calendar">□</span><div><strong>Design review moved to 3:30</strong><small>Calendar · 1 hr ago</small></div></article>
             </section>
 
             <section className="rail-card projects-card">
-              <div className="rail-title"><div><span className="section-kicker">In motion</span><h2>Projects</h2></div><button>View all</button></div>
+              <div className="rail-title"><div><span className="section-kicker">In motion</span><h2>Projects</h2></div><button onClick={() => setNav("Projects")}>View all</button></div>
               <article className="project-row"><div className="project-symbol purple">L</div><div><strong>Website launch</strong><span className="mini-progress"><i style={{ width: "72%" }} /></span></div><b>72%</b></article>
               <article className="project-row"><div className="project-symbol coral">C</div><div><strong>Client onboarding</strong><span className="mini-progress"><i style={{ width: "48%" }} /></span></div><b>48%</b></article>
               <article className="project-row"><div className="project-symbol green">Q</div><div><strong>Q4 planning</strong><span className="mini-progress"><i style={{ width: "31%" }} /></span></div><b>31%</b></article>
@@ -222,6 +334,23 @@ export default function Home() {
           {["Today", "Calendar", "Tasks", "People", "Notes", "Integrations"].map((item) => <button key={item} className={nav === item ? "active" : ""} onClick={() => setNav(item)}><span>{item === "Today" ? "☀" : item === "Calendar" ? "□" : item === "Tasks" ? "✓" : item === "People" ? "♧" : item === "Notes" ? "▤" : "⇄"}</span>{item === "Integrations" ? "Connect" : item}</button>)}
         </nav>
       </section>
+
+      <dialog ref={reminderDialog} className="reminder-dialog" aria-labelledby="reminder-title" onCancel={() => setReminderTaskId(null)} onClose={() => setReminderTaskId(null)}>
+        {reminderTask && <form onSubmit={saveReminder}>
+          <button className="reminder-close" type="button" onClick={() => setReminderTaskId(null)} aria-label="Close reminder">×</button>
+          <span className="reminder-mark">◷</span>
+          <p className="section-kicker">Task reminder</p>
+          <h2 id="reminder-title">{reminderTask.title}</h2>
+          <label htmlFor="reminder-at">Remind me at</label>
+          <input id="reminder-at" type="datetime-local" required min={localDateTimeValue(new Date(clock))} value={reminderValue} onChange={(event) => setReminderValue(event.target.value)} />
+          <div className="reminder-actions">
+            {reminderTask.reminderAt && <button className="remove-reminder" type="button" onClick={removeReminder}>Remove</button>}
+            <button className="save-reminder" type="submit">Save reminder</button>
+          </div>
+          <small>Saved on this device. Keep Relay open for reminders; closed tabs cannot send alerts.</small>
+          {reminderNotice && <p role="status">{reminderNotice}</p>}
+        </form>}
+      </dialog>
     </main>
   );
 }
@@ -242,6 +371,9 @@ function ModuleView({
   searchQuery,
   sources,
   onSetup,
+  openReminder,
+  clock,
+  addFromInbox,
 }: {
   name: string;
   tasks: Task[];
@@ -258,12 +390,16 @@ function ModuleView({
   searchQuery: string;
   sources: ReturnType<typeof useConnectedWorkspace>;
   onSetup: () => void;
+  openReminder: (task: Task) => void;
+  clock: number;
+  addFromInbox: (title: string) => void;
 }) {
+  const [taskFilter, setTaskFilter] = useState("All");
   const descriptions: Record<string, string> = {
-    Inbox: "Everything that needs a decision, gathered from your connected tools.",
+    Inbox: "Sample inbox · Live email and GitHub syncing is not connected yet.",
     Calendar: "One schedule across work and personal calendars.",
     Tasks: "Plan, prioritize, and complete work from one reliable list.",
-    Projects: "See momentum, ownership, and the next milestone at a glance.",
+    Projects: "Sample projects · Project editing is not available yet.",
     Notes: "Explore the sample Notes search experience.",
     Integrations: "Choose the accounts and information you want in Relay.",
   };
@@ -318,12 +454,13 @@ function ModuleView({
 
       {name === "Tasks" && (
         <section className="module-card full-list">
-          <div className="list-toolbar"><div><button className="filter-active">All</button><button>Today</button><button>Upcoming</button></div><span>{tasks.filter((task) => !task.done).length} open</span></div>
-          {tasks.map((task) => (
+          <div className="list-toolbar"><div>{["All", "Today", "Upcoming"].map(filter => <button key={filter} className={taskFilter === filter ? "filter-active" : ""} onClick={() => setTaskFilter(filter)}>{filter}</button>)}</div><span>{tasks.filter((task) => !task.done).length} open</span></div>
+          {filterTasks(tasks, taskFilter, clock).map((task) => (
             <article className={task.done ? "task-row is-done" : "task-row"} key={task.id}>
               <button className="task-check" onClick={() => toggleTask(task.id)} aria-label={`${task.done ? "Reopen" : "Complete"} ${task.title}`}>{task.done ? "✓" : ""}</button>
-              <div className="task-copy"><h3>{task.title}</h3><p>{task.meta}</p></div>
+              <div className="task-copy"><h3>{task.title}</h3><p>{task.meta}{task.reminderAt && <span className={Date.parse(task.reminderAt) <= clock && !task.done ? "reminder-time due" : "reminder-time"}> · ◷ {formatReminder(task.reminderAt)}</span>}</p></div>
               <span className={`source-badge ${task.source.toLowerCase()}`}><b>{iconFor[task.source]}</b>{task.source}</span>
+              <button className={task.reminderAt ? "reminder-button active" : "reminder-button"} onClick={() => openReminder(task)} aria-label={`${task.reminderAt ? "Edit" : "Set"} reminder for ${task.title}`} title={task.reminderAt ? "Edit reminder" : "Set reminder"}>◷</button>
             </article>
           ))}
         </section>
@@ -333,7 +470,7 @@ function ModuleView({
         <div className="module-columns">
           <section className="module-card large-inbox">
             {["Maya replied to “Project scope”", "Review requested on relay-web #184", "Design review moved to 3:30", "Invoice reminder from Figma", "Sam mentioned you in launch-notes"].map((item, index) => (
-              <article className="large-inbox-row" key={item}><span className={`source-icon ${index % 2 ? "github" : "gmail"}`}>{index % 2 ? "⌘" : "M"}</span><div><strong>{item}</strong><small>{index % 2 ? "GitHub" : "Gmail"} · {18 + index * 12} min ago</small></div><button>Turn into task</button></article>
+              <article className="large-inbox-row" key={item}><span className={`source-icon ${index % 2 ? "github" : "gmail"}`}>{index % 2 ? "⌘" : "M"}</span><div><strong>{item}</strong><small>{index % 2 ? "GitHub" : "Gmail"} · {18 + index * 12} min ago</small></div><button onClick={() => addFromInbox(item)}>Turn into task</button></article>
             ))}
           </section>
           <aside className="module-card calm-zero"><span>7</span><h2>items need you</h2><p>Clear these and Relay will mute the noise until something new needs a decision.</p></aside>
@@ -348,7 +485,7 @@ function ModuleView({
           {[["Website launch", "Ship the new marketing experience", "72", "purple"], ["Client onboarding", "A smoother first 30 days", "48", "coral"], ["Q4 planning", "Set priorities for the next quarter", "31", "green"]].map(([title, copy, progress, color]) => (
             <article className="module-card project-tile" key={title}><div className={`project-symbol ${color}`}>{title[0]}</div><span className="section-kicker">Active project</span><h2>{title}</h2><p>{copy}</p><div className="project-progress"><span style={{ width: `${progress}%` }} /></div><footer><strong>{progress}% complete</strong><span>Next milestone →</span></footer></article>
           ))}
-          <button className="new-project">＋<span>New project</span></button>
+          <button className="new-project" disabled title="Project editing is coming later">＋<span>New project</span></button>
         </div>
       )}
     </section>

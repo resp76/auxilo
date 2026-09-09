@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -21,10 +20,7 @@ export const viewport: Viewport = {
 };
 
 export async function generateMetadata(): Promise<Metadata> {
-  const requestHeaders = await headers();
-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
-  const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
-  const origin = `${protocol}://${host}`;
+  const origin = "https://relay-day-sync.roldee.chatgpt.site";
 
   return {
     metadataBase: new URL(origin),

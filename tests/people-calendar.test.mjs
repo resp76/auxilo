@@ -13,6 +13,7 @@ test("validates selected iPhone export and never trusts provider fields from the
   assert.equal(data.events[0].allDay, true);
   assert.throws(() => parseIPhoneExport(JSON.stringify({ ...fixture, version: 2 })), /valid Relay/);
   assert.throws(() => parseIPhoneExport(JSON.stringify({ ...fixture, contacts: [fixture.contacts[0], fixture.contacts[0]] })), /Duplicate/);
+  assert.throws(() => parseIPhoneExport(JSON.stringify({ ...fixture, events: [fixture.events[0], fixture.events[0]] })), /Duplicate/);
   assert.throws(() => parseIPhoneExport(JSON.stringify({ ...fixture, events: [{ ...fixture.events[0], end: "invalid" }] })), /dates/);
   assert.throws(() => parseIPhoneExport(JSON.stringify({ ...fixture, contacts: [{ ...fixture.contacts[0], email: {} }] })), /email/);
   assert.throws(() => parseIPhoneExport("x".repeat(5000001)), /5 MB/);
@@ -50,6 +51,7 @@ test("expired access and untrusted endpoints cannot send a bearer token", async 
   t.mock.method(globalThis, "fetch", async () => { called = true; return Response.json({}); });
   await assert.rejects(googleRequest(session, "https://attacker.example/"), /Invalid/);
   await assert.rejects(googleRequest({ ...session, expiresAt: 0 }, "https://people.googleapis.com/v1/people/me"), /expired/);
+  await assert.rejects(googleRequest({ ...session, expiresAt: NaN }, "https://people.googleapis.com/v1/people/me"), /expired/);
   assert.equal(called, false);
 });
 

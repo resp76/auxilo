@@ -8,7 +8,7 @@ type GoogleEvent = { id: string; summary?: string; start: { dateTime?: string; d
 export async function googleRequest<T>(session: Session, url: string, init: RequestInit = {}): Promise<T> {
   const endpoint = new URL(url);
   if (!["www.googleapis.com", "people.googleapis.com"].includes(endpoint.hostname) || endpoint.protocol !== "https:") throw new Error("Invalid Google endpoint.");
-  if (session.expiresAt <= Date.now()) throw new Error("Google access expired. Reconnect this account to continue.");
+  if (!Number.isFinite(session.expiresAt) || session.expiresAt <= Date.now()) throw new Error("Google access expired. Reconnect this account to continue.");
   const response = await fetch(endpoint, { ...init, signal: AbortSignal.timeout(20000), redirect: "error", headers: { ...init.headers, Authorization: `Bearer ${session.token}`, "Content-Type": "application/json" } });
   if (!response.ok) {
     if (response.status === 401) throw new Error("Google access expired. Reconnect this account.");
@@ -86,6 +86,7 @@ export function parseIPhoneExport(text: string): { people: Person[]; events: Eve
     return { id: string(e, "id"), title: string(e, "title"), start, end, allDay: e.allDay, calendarId: string(e, "calendarId"), account: string(e, "calendarName"), source: "iPhone", attendees: [], recurring: false };
   });
   if (new Set(people.map((p: Person) => p.id)).size !== people.length) throw new Error("Duplicate contact IDs in this export.");
+  if (new Set(events.map((e: Event) => JSON.stringify([e.calendarId, e.id]))).size !== events.length) throw new Error("Duplicate event IDs in this export.");
   return { people, events, exportedAt: data.exportedAt };
 }
 
