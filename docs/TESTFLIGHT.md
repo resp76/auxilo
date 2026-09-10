@@ -71,9 +71,13 @@ straight to App Store Connect — there is no separate `altool` call.
 
 ## Status
 
-**1.0 (build 1) was uploaded to App Store Connect on 2026-09-10** and accepted
-("Upload succeeded"). The app record exists, so later uploads only need the
-build number bumped.
+**1.0 (build 2) was uploaded to App Store Connect on 2026-09-10** and accepted.
+It carries the Auxilo mark; build 1 shipped the older placeholder icon. The app
+record exists, so later uploads only need the build number bumped.
+
+Apple validates icon rules at upload (1024×1024, no alpha), so acceptance is
+itself proof the icon is correct — useful here, because the simulator build
+used to eyeball it hung on an approval dialog and had to be killed.
 
 Authentication came from Xcode's signed-in Apple account via
 `-allowProvisioningUpdates`; no App Store Connect API key was needed. The `.p8`
