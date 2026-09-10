@@ -51,3 +51,7 @@ yarn-error.log*
 
 # Local browser QA artifacts
 /.playwright-mcp/
+
+# Xcode archive/export output
+/build/
+*.xcarchive
