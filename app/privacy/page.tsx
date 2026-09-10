@@ -36,7 +36,7 @@ export default function PrivacyPage() {
         <p>Auxilo is not directed to children under 13.</p>
 
         <h2>Contact</h2>
-        <p>For privacy questions or account-deletion help, open a request in the <a href="https://github.com/resp76/relay-productivity-dashboard/issues" target="_blank" rel="noreferrer">Auxilo support tracker</a>.</p>
+        <p>For privacy questions or account-deletion help, open a request in the <a href="https://github.com/resp76/auxilo/issues" target="_blank" rel="noreferrer">Auxilo support tracker</a>.</p>
       </article>
     </main>
   );
