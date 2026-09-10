@@ -11,7 +11,7 @@ test("validates selected iPhone export and never trusts provider fields from the
   assert.equal(data.events[0].source, "iPhone");
   assert.equal(data.events[0].start, "2026-09-09");
   assert.equal(data.events[0].allDay, true);
-  assert.throws(() => parseIPhoneExport(JSON.stringify({ ...fixture, version: 2 })), /valid Relay/);
+  assert.throws(() => parseIPhoneExport(JSON.stringify({ ...fixture, version: 2 })), /valid Auxilo/);
   assert.throws(() => parseIPhoneExport(JSON.stringify({ ...fixture, contacts: [fixture.contacts[0], fixture.contacts[0]] })), /Duplicate/);
   assert.throws(() => parseIPhoneExport(JSON.stringify({ ...fixture, events: [fixture.events[0], fixture.events[0]] })), /Duplicate/);
   assert.throws(() => parseIPhoneExport(JSON.stringify({ ...fixture, events: [{ ...fixture.events[0], end: "invalid" }] })), /dates/);

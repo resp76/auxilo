@@ -1,6 +1,6 @@
-# Relay — Your day, in sync
+# Auxilo — Your day, in sync
 
-Relay is a productivity dashboard for local tasks and reminders, with Google/email sign-in, contacts and calendar tools, and an iPhone companion for selected Contacts and Calendar exports.
+Auxilo is a productivity dashboard for local tasks and reminders, with Google/email sign-in, contacts and calendar tools, and an iPhone companion for selected Contacts and Calendar exports.
 
 ## Run locally
 
@@ -43,7 +43,7 @@ The native app is a Calendar/Contacts companion. The productivity dashboard runs
 ## Data and integrations
 
 - Supabase authenticates users. Setup: [docs/AUTH.md](docs/AUTH.md).
-- Tasks and reminder times are stored in this browser per account. Reminders need Relay open; background delivery and cross-device task sync are not implemented.
+- Tasks and reminder times are stored in this browser per account. Reminders need Auxilo open; background delivery and cross-device task sync are not implemented.
 - Google Calendar/People access uses separate OAuth setup from Google sign-in. Imported iPhone records are read-only and held in the current tab's memory.
 - GitHub, Linear, Notion, and Slack are live paste-a-key connectors. See [docs/CONNECTORS.md](docs/CONNECTORS.md).
 - Inbox, email accounts, projects, spaces, and Apple Notes are previews. They do not represent live provider sync.

@@ -40,9 +40,9 @@ const worker = {
     // and is never stored, logged, or read here.
     if (url.pathname === "/api/connector" && request.method === "POST") {
       const upstreams: Record<string, string> = { notion: "https://api.notion.com", slack: "https://slack.com" };
-      const base = upstreams[request.headers.get("x-relay-provider") || ""];
-      const path = request.headers.get("x-relay-path") || "";
-      const key = request.headers.get("x-relay-key") || "";
+      const base = upstreams[request.headers.get("x-auxilo-provider") || ""];
+      const path = request.headers.get("x-auxilo-path") || "";
+      const key = request.headers.get("x-auxilo-key") || "";
       if (!base || !key || !/^\/[A-Za-z0-9/._-]*$/.test(path)) return new Response("Bad connector request", { status: 400 });
       const target = new URL(path, base);
       if (target.origin !== base) return new Response("Bad connector path", { status: 400 });

@@ -3,7 +3,7 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { ConnectedCalendar, PeopleWorkspace, SourceConnections, useConnectedWorkspace } from "./connected-workspace";
 import type { Person } from "./people-calendar";
-import { AuthGate, useRelayAuth } from "./auth-gate";
+import { AuthGate, useAuxiloAuth } from "./auth-gate";
 
 import { dueReminders, filterTasks, parseTasks, reminderInstant, snoozeInstant, tomorrowAt, type Task } from "./task-reminders";
 import { filterCommands, nextIndex, type Command } from "./commands";
@@ -54,13 +54,15 @@ function localDateTimeValue(date: Date) {
 }
 
 export default function Home() {
-  return <AuthGate><RelayDashboard /></AuthGate>;
+  return <AuthGate><AuxiloDashboard /></AuthGate>;
 }
 
-function RelayDashboard() {
-  const { user, signOut } = useRelayAuth();
+function AuxiloDashboard() {
+  const { user, signOut } = useAuxiloAuth();
   const displayName = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split("@")[0] || "there";
   const initials = displayName.split(/\s+/).slice(0, 2).map((part: string) => part[0]).join("").toUpperCase();
+  // Key deliberately keeps the old "relay." prefix through the Auxilo rename:
+  // changing it would orphan every task already saved in someone's browser.
   const taskStorageKey = `relay.tasks.${user?.id || user?.email || "demo"}`;
   const [savedTasks] = useState(() => {
     if (typeof window === "undefined") return { tasks: initialTasks, error: "" };
@@ -105,7 +107,7 @@ function RelayDashboard() {
   }, [savedTasks.error, taskStorageKey, tasks]);
 
   useEffect(() => {
-    // ponytail: tab timers only; server push is needed for delivery with Relay closed.
+    // ponytail: tab timers only; server push is needed for delivery with Auxilo closed.
     function showDueReminder() {
       const now = Date.now();
       setClock(now);
@@ -116,7 +118,7 @@ function RelayDashboard() {
         alertedReminders.current.add(`${task.id}:${task.reminderAt}`);
         try {
           if ("Notification" in window && Notification.permission === "granted") {
-            new Notification("Relay reminder", { body: task.title });
+            new Notification("Auxilo reminder", { body: task.title });
           }
         } catch { /* In-app alerts still work when desktop notifications are unavailable. */ }
       }
@@ -152,7 +154,7 @@ function RelayDashboard() {
 
   function requestNotifications() {
     if ("Notification" in window && Notification.permission === "default") {
-      void Notification.requestPermission().catch(() => setReminderNotice("Reminder saved. Desktop notifications are unavailable; keep Relay open for in-app alerts."));
+      void Notification.requestPermission().catch(() => setReminderNotice("Reminder saved. Desktop notifications are unavailable; keep Auxilo open for in-app alerts."));
     }
   }
 
@@ -241,9 +243,9 @@ function RelayDashboard() {
   return (
     <main className="app-shell">
       <aside className={menuOpen ? "sidebar mobile-open" : "sidebar"}>
-        <div className="brand" aria-label="Relay home">
+        <div className="brand" aria-label="Auxilo home">
           <span className="brand-mark"><i /><i /><i /></span>
-          <span>Relay</span>
+          <span>Auxilo</span>
         </div>
 
         <nav className="main-nav" aria-label="Main navigation">
@@ -289,7 +291,7 @@ function RelayDashboard() {
 
         {customizing && (
           <section className="customize-strip" aria-label="Dashboard customization">
-            <div><strong>Make Relay yours</strong><span>Choose how much you see at a glance.</span></div>
+            <div><strong>Make Auxilo yours</strong><span>Choose how much you see at a glance.</span></div>
             <label><input type="checkbox" checked={compact} onChange={(event) => setCompact(event.target.checked)} /> Compact task rows</label>
             <button onClick={() => setCustomizing(false)}>Done</button>
           </section>
@@ -414,7 +416,7 @@ function RelayDashboard() {
             {reminderTask.reminderAt && <button className="remove-reminder" type="button" onClick={removeReminder}>Remove</button>}
             <button className="save-reminder" type="submit">Save reminder</button>
           </div>
-          <small>Saved on this device. Keep Relay open for reminders; closed tabs cannot send alerts.</small>
+          <small>Saved on this device. Keep Auxilo open for reminders; closed tabs cannot send alerts.</small>
           {reminderNotice && <p role="status">{reminderNotice}</p>}
         </form>}
       </dialog>
@@ -500,7 +502,7 @@ function ModuleView({
     Tasks: "Plan, prioritize, and complete work from one reliable list.",
     Projects: "Sample projects · Project editing is not available yet.",
     Notes: "Explore the sample Notes search experience.",
-    Integrations: "Choose the accounts and information you want in Relay.",
+    Integrations: "Choose the accounts and information you want in Auxilo.",
   };
 
   return (
@@ -518,7 +520,7 @@ function ModuleView({
             <span className="section-kicker">Integration roadmap</span>
             <h2>Your tools stay the source of truth.</h2>
             <p>Google Calendar and Contacts use account authorization above. GitHub, Linear, Notion, and Slack are live: paste a key and your real items load into Tasks. The email and Apple Notes controls below are still demo flows and do not connect to your accounts.</p>
-            <div className="sync-flow"><span>Email</span><i>⇄</i><span>Relay</span><i>⇄</i><span>Calendar</span><i>⇄</i><span>GitHub</span><i>⇄</i><span>Notes</span></div>
+            <div className="sync-flow"><span>Email</span><i>⇄</i><span>Auxilo</span><i>⇄</i><span>Calendar</span><i>⇄</i><span>GitHub</span><i>⇄</i><span>Notes</span></div>
           </section>
 
           <section className="module-card email-connector">
@@ -570,11 +572,11 @@ function ModuleView({
       {name === "Inbox" && (
         <div className="module-columns">
           <section className="module-card large-inbox">
-            {["Maya replied to “Project scope”", "Review requested on relay-web #184", "Design review moved to 3:30", "Invoice reminder from Figma", "Sam mentioned you in launch-notes"].map((item, index) => (
+            {["Maya replied to “Project scope”", "Review requested on auxilo-web #184", "Design review moved to 3:30", "Invoice reminder from Figma", "Sam mentioned you in launch-notes"].map((item, index) => (
               <article className="large-inbox-row" key={item}><span className={`source-icon ${index % 2 ? "github" : "gmail"}`}>{index % 2 ? "⌘" : "M"}</span><div><strong>{item}</strong><small>{index % 2 ? "GitHub" : "Gmail"} · {18 + index * 12} min ago</small></div><button onClick={() => addFromInbox(item)}>Turn into task</button></article>
             ))}
           </section>
-          <aside className="module-card calm-zero"><span>7</span><h2>items need you</h2><p>Clear these and Relay will mute the noise until something new needs a decision.</p></aside>
+          <aside className="module-card calm-zero"><span>7</span><h2>items need you</h2><p>Clear these and Auxilo will mute the noise until something new needs a decision.</p></aside>
         </div>
       )}
 
@@ -621,13 +623,13 @@ const liveConnectors: LiveConnector[] = [
   {
     source: "Notion", mark: "N", heading: "Bring your recent Notion pages into Tasks",
     keyLabel: "Integration token", placeholder: "ntn_…", reading: "Reading your most recently edited Notion pages…",
-    help: <>Create an internal integration and share the pages you want with it. Notion blocks browser calls, so this request is forwarded by Relay&apos;s own worker, which stores nothing.</>,
+    help: <>Create an internal integration and share the pages you want with it. Notion blocks browser calls, so this request is forwarded by Auxilo&apos;s own worker, which stores nothing.</>,
     link: "https://www.notion.so/my-integrations", read: readNotionTasks,
   },
   {
     source: "Slack", mark: "S", heading: "Turn messages sent to you into Tasks",
     keyLabel: "User token", placeholder: "xoxp-…", reading: "Searching for messages sent to you…",
-    help: <>Needs a <strong>user</strong> token (xoxp-) with <code>search:read</code>. Slack refuses browser auth headers, so this is forwarded by Relay&apos;s own worker, which stores nothing.</>,
+    help: <>Needs a <strong>user</strong> token (xoxp-) with <code>search:read</code>. Slack refuses browser auth headers, so this is forwarded by Auxilo&apos;s own worker, which stores nothing.</>,
     link: "https://api.slack.com/apps", read: readSlackTasks,
   },
 ];
@@ -669,7 +671,7 @@ function NotesView({ query, connected, connect }: { query: string; connected: bo
   const matches = notes.filter((note) => `${note.title} ${note.folder} ${note.body}`.toLowerCase().includes(query.trim().toLowerCase()));
   const active = matches.find((note) => note.id === selected) ?? matches[0];
 
-  if (!connected) return <section className="module-card notes-setup"><span className="notes-app-icon">▤</span><div><span className="section-kicker">Relay for iPhone · Planned</span><h2>Explore Apple Notes search</h2><p>These are sample notes. A Notes Shortcut bridge has not been built. The Calendar and Contacts companion does not access Apple Notes.</p></div><button className="connect-button" onClick={connect}>View sample notes</button></section>;
+  if (!connected) return <section className="module-card notes-setup"><span className="notes-app-icon">▤</span><div><span className="section-kicker">Auxilo for iPhone · Planned</span><h2>Explore Apple Notes search</h2><p>These are sample notes. A Notes Shortcut bridge has not been built. The Calendar and Contacts companion does not access Apple Notes.</p></div><button className="connect-button" onClick={connect}>View sample notes</button></section>;
 
   return <div className="notes-browser">
     <aside className="module-card notes-list">

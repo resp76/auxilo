@@ -59,7 +59,7 @@ export async function proxyRequest<T>(provider: "notion" | "slack", path: string
     method: "POST",
     signal: AbortSignal.timeout(20000),
     redirect: "error",
-    headers: { "Content-Type": "application/json", "x-relay-provider": provider, "x-relay-path": path, "x-relay-key": key },
+    headers: { "Content-Type": "application/json", "x-auxilo-provider": provider, "x-auxilo-path": path, "x-auxilo-key": key },
     body: JSON.stringify(body ?? {}),
   });
   if (!response.ok) throw failure(provider === "notion" ? "Notion" : "Slack", response.status);

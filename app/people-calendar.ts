@@ -77,7 +77,7 @@ export async function saveEvent(session: Session, calendarId: string, title: str
 export function parseIPhoneExport(text: string): { people: Person[]; events: Event[]; exportedAt: string } {
   if (text.length > 5_000_000) throw new Error("Choose an export smaller than 5 MB.");
   const data = JSON.parse(text);
-  if (!data || data.version !== 1 || typeof data.exportedAt !== "string" || !Number.isFinite(Date.parse(data.exportedAt)) || !Array.isArray(data.contacts) || !Array.isArray(data.events) || data.contacts.length > 10000 || data.events.length > 10000) throw new Error("Choose a valid Relay iPhone export.");
+  if (!data || data.version !== 1 || typeof data.exportedAt !== "string" || !Number.isFinite(Date.parse(data.exportedAt)) || !Array.isArray(data.contacts) || !Array.isArray(data.events) || data.contacts.length > 10000 || data.events.length > 10000) throw new Error("Choose a valid Auxilo iPhone export.");
   function string(obj: Record<string, unknown>, key: string, limit = 1000) { if (typeof obj?.[key] !== "string" || (obj[key] as string).length > limit) throw new Error(`Invalid ${key} in iPhone export.`); return obj[key] as string; }
   const people = data.contacts.map((p: Record<string, unknown>): Person => ({ id: `iphone:${string(p, "id")}`, name: string(p, "name"), email: string(p, "email"), phone: string(p, "phone"), organization: string(p, "organization"), account: "Selected iPhone contacts", source: "iPhone" }));
   const events = data.events.map((e: Record<string, unknown>): Event => {

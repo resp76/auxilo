@@ -1,4 +1,4 @@
-# Relay calendars and contacts — implementation and setup
+# Auxilo calendars and contacts — implementation and setup
 
 Updated September 8, 2026. This records implemented behavior, not a promise of unattended background synchronization.
 
@@ -15,21 +15,21 @@ Updated September 8, 2026. This records implemented behavior, not a promise of u
 
 The Today dashboard, email, Slack, Linear, Notion and GitHub workflows remain demonstrations. Those controls now explicitly say Demo. A checked demo control does not mean that an account is authorized.
 
-## Set up Google for Relay
+## Set up Google for Auxilo
 
 The project owner confirmed that no Google OAuth web client ID exists yet. No client secret is required for this browser-based flow.
 
-1. In [Google Cloud Console](https://console.cloud.google.com/), create or select the project that will own Relay's integration.
+1. In [Google Cloud Console](https://console.cloud.google.com/), create or select the project that will own Auxilo's integration.
 2. Enable **Google Calendar API** and **People API**.
-3. Configure Google Auth Platform branding, audience and consent. Set the support email and required app information. While in testing, add the Google accounts that will test Relay. Public distribution may require Google's verification for the requested scopes.
+3. Configure Google Auth Platform branding, audience and consent. Set the support email and required app information. While in testing, add the Google accounts that will test Auxilo. Public distribution may require Google's verification for the requested scopes.
 4. Create an OAuth client with application type **Web application**.
 5. Register authorized JavaScript origins (origins only, no trailing paths):
-   - `https://relay-day-sync.roldee.chatgpt.site`
+   - `https://auxilo.app`
    - `http://localhost:3000` for local development, if needed.
-6. Copy the public client ID ending in `.apps.googleusercontent.com`. Never paste a client secret into Relay.
+6. Copy the public client ID ending in `.apps.googleusercontent.com`. Never paste a client secret into Auxilo.
 7. Set the hosted non-secret variable `GOOGLE_CLIENT_ID`, then redeploy. For a one-session test, the owner may instead enter it in Integrations → Google setup. The client ID is returned by `/api/google/config`; no other environment values are exposed.
 8. Choose Calendar and/or Contacts access, load Google's sign-in library, then choose the Google account and grant the requested scopes.
-9. Check the calendars Relay may read and press **Refresh contacts & selected calendars**. No calendars are chosen automatically.
+9. Check the calendars Auxilo may read and press **Refresh contacts & selected calendars**. No calendars are chosen automatically.
 10. Repeat account selection to add another account. Reauthorizing the same Google identity replaces its session instead of duplicating it.
 
 Scopes: `openid`, `email`, `contacts.readonly` for contact reads, and `calendar.events` plus `calendar.calendarlist.readonly` for calendars. Users can enable only Contacts or only Calendar before authorization. Partial grants are respected.
@@ -39,7 +39,7 @@ Scopes: `openid`, `email`, `contacts.readonly` for contact reads, and `calendar.
 - Google uses the official browser token model: a popup returns a short-lived token and the browser calls Google's REST APIs directly over HTTPS.
 - Tokens, imported records, and client-ID overrides stay in React memory, never localStorage or a server token vault. Reloading the page ends this session.
 - New access after expiry requires an explicit Google sign-in action. There is no automatic refresh token or server background worker in this slice.
-- Disconnect removes the account's records and token from Relay memory. It does not revoke Google's authorization; the UI links to Google Account connections for that action.
+- Disconnect removes the account's records and token from Auxilo memory. It does not revoke Google's authorization; the UI links to Google Account connections for that action.
 - iPhone snapshots replace previous iPhone records only. Google records remain separate. No automatic cross-provider merging occurs.
 - iPhone exports are ordinary JSON files with personal data, not encrypted cloud backups. The companion's export screen explains this. Choose a trusted location and remove the file when no longer needed.
 
@@ -55,7 +55,7 @@ Scopes: `openid`, `email`, `contacts.readonly` for contact reads, and `calendar.
 
 ## iPhone companion
 
-Download the source through Integrations or [the companion ZIP](https://relay-day-sync.roldee.chatgpt.site/auxilo-iphone-companion.zip). Full build instructions are included in `ios/AuxiloCompanion/README.md` and the ZIP.
+Download the source through Integrations or [the companion ZIP](https://auxilo.app/auxilo-iphone-companion.zip). Full build instructions are included in `ios/AuxiloCompanion/README.md` and the ZIP.
 
 The companion is a standalone SwiftUI source file, not an installed iOS app or signed release. Create an iOS 17+ SwiftUI application in Xcode, add the file, configure the Calendar and Contacts usage descriptions, select a signing team, and run on a device. The EventKit system event editor writes to the source calendar. Selected contacts are read through the system picker.
 

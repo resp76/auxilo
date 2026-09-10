@@ -14,14 +14,14 @@ async function render() {
   );
 }
 
-test("server-renders the Relay dashboard", async () => {
+test("server-renders the Auxilo dashboard", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>Relay — Your day, in sync<\/title>/i);
-  assert.match(html, /Preparing Relay/);
+  assert.match(html, /<title>Auxilo — Your day, in sync<\/title>/i);
+  assert.match(html, /Preparing Auxilo/);
   assert.match(html, /manifest\.webmanifest/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape/);
 
@@ -39,7 +39,7 @@ test("server-renders the Relay dashboard", async () => {
   for (const provider of ["Gmail", "Outlook", "Yahoo", "Private Email", "Other email"]) assert.match(page, new RegExp(provider));
   for (const integration of ["Slack", "Linear", "Notion", "Apple Notes"]) assert.match(page, new RegExp(integration));
   assert.match(page, /Search iPhone Notes/);
-  assert.match(page, /Relay for iPhone/);
+  assert.match(page, /Auxilo for iPhone/);
 });
 
 test("serves only the public authentication configuration", async () => {
@@ -49,7 +49,7 @@ test("serves only the public authentication configuration", async () => {
   const response = await worker.fetch(
     new Request("http://localhost/api/auth/config"),
     {
-      SUPABASE_URL: "https://relay.supabase.co",
+      SUPABASE_URL: "https://auxilo.supabase.co",
       SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
       ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
     },
@@ -58,7 +58,7 @@ test("serves only the public authentication configuration", async () => {
 
   assert.equal(response.headers.get("cache-control"), "no-store");
   assert.deepEqual(await response.json(), {
-    url: "https://relay.supabase.co",
+    url: "https://auxilo.supabase.co",
     publishableKey: "sb_publishable_test",
   });
 });

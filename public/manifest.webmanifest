@@ -1,6 +1,6 @@
 {
-  "name": "Relay — Your day, in sync",
-  "short_name": "Relay",
+  "name": "Auxilo — Your day, in sync",
+  "short_name": "Auxilo",
   "description": "A calm command center for tasks, email, calendar, GitHub, reminders, and projects.",
   "start_url": "/",
   "display": "standalone",

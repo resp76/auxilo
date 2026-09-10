@@ -109,7 +109,7 @@ export function useConnectedWorkspace() {
     setCalendars(current => current.filter(c => c.account !== session.email));
     setEvents(current => current.filter(e => !(e.source === "Google" && e.account === session.email)));
     setSelectedCalendars(current => current.filter(key => !key.startsWith(`${session.email}:`)));
-    setMessage(`Removed ${session.email} from this session. Manage Google permissions to revoke Relay access.`);
+    setMessage(`Removed ${session.email} from this session. Manage Google permissions to revoke Auxilo access.`);
   }
 
   async function importFile(file?: File) {
@@ -137,18 +137,18 @@ export function SourceConnections({ sources: s }: { sources: Sources }) {
         <div className="source-panel-heading"><span className="connection-logo calendar">G</span><div><h2>Google Calendar & Contacts</h2><p>{s.sessions.length ? `${s.sessions.length} authorized account${s.sessions.length > 1 ? "s" : ""}` : "Not connected"}</p></div></div>
         <p>Read contacts and manage events. Connect each work or personal account separately.</p>
         <div className="source-options"><label><input type="checkbox" checked={s.calendarEnabled} onChange={e => s.setCalendarEnabled(e.target.checked)} /> Calendar events · read and write</label><label><input type="checkbox" checked={s.contactsEnabled} onChange={e => s.setContactsEnabled(e.target.checked)} /> Google Contacts · read only</label></div>
-        <details className="setup-details" open={!s.clientId}><summary>Google setup</summary><p>Relay needs an OAuth web client ID with this site registered as an authorized JavaScript origin. Enable the Google Calendar and People APIs, and add test users while your consent screen is in testing.</p><label>Public client ID<input value={s.clientId} onChange={e => s.setClientId(e.target.value.trim())} placeholder="…apps.googleusercontent.com" autoComplete="off" /></label><p>A client ID is public. Do not paste a client secret.</p><a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer">Google Cloud setup ↗</a></details>
+        <details className="setup-details" open={!s.clientId}><summary>Google setup</summary><p>Auxilo needs an OAuth web client ID with this site registered as an authorized JavaScript origin. Enable the Google Calendar and People APIs, and add test users while your consent screen is in testing.</p><label>Public client ID<input value={s.clientId} onChange={e => s.setClientId(e.target.value.trim())} placeholder="…apps.googleusercontent.com" autoComplete="off" /></label><p>A client ID is public. Do not paste a client secret.</p><a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer">Google Cloud setup ↗</a></details>
         <button className="primary-action" disabled={s.busy || (!s.contactsEnabled && !s.calendarEnabled) || !s.clientId} onClick={s.sdk ? s.connect : s.loadGoogle}>{s.sdk ? "Choose Google account" : "Load Google sign-in"}</button>
         {s.sessions.map(session => <div className="account-line" key={session.id}><div><strong>{session.email}</strong><small>Session access · reconnect after expiry</small></div><button disabled={s.busy} onClick={() => s.disconnect(session)}>Disconnect</button></div>)}
         {s.sessions.length > 0 && <><button className="secondary-action" disabled={s.busy} onClick={s.refresh}>Refresh contacts & selected calendars</button><a className="source-link" href="https://myaccount.google.com/connections" target="_blank" rel="noreferrer">Manage Google permissions ↗</a></>}
       </section>
       <section className="module-card source-panel">
-        <div className="source-panel-heading"><span className="connection-logo apple-notes"></span><div><h2>iPhone Calendar & Contacts</h2><p>{s.imported ? "Imported snapshot · no automatic sync" : "Requires the Relay iPhone companion"}</p></div></div>
+        <div className="source-panel-heading"><span className="connection-logo apple-notes"></span><div><h2>iPhone Calendar & Contacts</h2><p>{s.imported ? "Imported snapshot · no automatic sync" : "Requires the Auxilo iPhone companion"}</p></div></div>
         <p>Select contacts and calendars on your iPhone, export them from the companion, then open that file here. The web app cannot directly request iOS permissions.</p>
         <ol><li>Build and install the companion with Xcode.</li><li>Select contacts and allow calendar access.</li><li>Choose calendars, export, then import below.</li></ol>
         <a className="secondary-action" href="/auxilo-iphone-companion.zip" download>Download iPhone companion source</a>
         <label className="file-import">Import iPhone export<input type="file" accept=".json,application/json" onChange={e => { void s.importFile(e.target.files?.[0]); e.target.value = ""; }} /></label>
-        {s.imported && <div className="account-line"><div><strong>Snapshot from {new Date(s.imported).toLocaleString()}</strong><small>Read only in Relay · edit originals on iPhone</small></div><button onClick={s.removeImport}>Remove import</button></div>}
+        {s.imported && <div className="account-line"><div><strong>Snapshot from {new Date(s.imported).toLocaleString()}</strong><small>Read only in Auxilo · edit originals on iPhone</small></div><button onClick={s.removeImport}>Remove import</button></div>}
         <p className="muted-copy">Tokens and imported data stay in this browser tab’s memory. Reloading clears them. Import only on a device you trust.</p>
       </section>
     </div>

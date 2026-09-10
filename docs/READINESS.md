@@ -1,4 +1,4 @@
-# Relay readiness review
+# Auxilo readiness review
 
 Reviewed September 9, 2026. Ready for local testing; not yet ready for public production or App Store distribution.
 
@@ -41,7 +41,7 @@ Reviewed September 9, 2026. Ready for local testing; not yet ready for public pr
 - Configure Apple signing/team and App Store Connect; test on a physical iPhone before TestFlight. The native app is a Contacts/Calendar export companion, not a complete native dashboard.
 - Verify calendar permission denial/revocation, event creation/editing, recurring/all-day events, and multiple calendar accounts on a real device. Automated native tests currently cover contacts and opening export only.
 - Move Google OAuth beyond its current testing configuration for broader users, and verify the production redirect URLs and email delivery settings. Google Calendar/People authorization is separate from Supabase sign-in.
-- Implement task cloud storage and background notification delivery if users need cross-device data and reminders while Relay is closed. Current tasks stay in browser storage per account; tab timers are not guaranteed in the background.
+- Implement task cloud storage and background notification delivery if users need cross-device data and reminders while Auxilo is closed. Current tasks stay in browser storage per account; tab timers are not guaranteed in the background.
 - Replace sample inbox/projects/spaces and connector previews with real persistence/provider sync before describing them as production features. iPhone imports are read-only and session-only.
 - Complete a production security, accessibility, and privacy review after the real data flows and release configuration are finalized. This scoped review cannot guarantee absence of defects.
 

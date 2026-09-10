@@ -1,6 +1,6 @@
 # Shipping Auxilo to TestFlight
 
-The companion is the **Contacts/Calendar export utility**, not the Relay
+The companion is the **Contacts/Calendar export utility**, not the Auxilo
 dashboard. The dashboard stays on the web. Distributing this to TestFlight puts
 the exporter on your phone properly instead of side-loading it from Xcode.
 
@@ -67,7 +67,7 @@ straight to App Store Connect — there is no separate `altool` call.
   App Review**. The build is usable minutes after processing. This is the path
   you want.
 - **External testing** does require Beta App Review, and needs a description,
-  test notes, and a privacy policy URL. Relay has one at `/privacy`.
+  test notes, and a privacy policy URL. Auxilo has one at `/privacy`.
 
 ## Every subsequent upload
 

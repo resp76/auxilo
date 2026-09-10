@@ -20,18 +20,18 @@ export const viewport: Viewport = {
 };
 
 export async function generateMetadata(): Promise<Metadata> {
-  const origin = "https://relay-day-sync.roldee.chatgpt.site";
+  const origin = "https://auxilo.app";
 
   return {
     metadataBase: new URL(origin),
-    title: "Relay — Your day, in sync",
+    title: "Auxilo — Your day, in sync",
     description: "A calm command center for tasks, email, calendar, GitHub, reminders, and projects.",
-    applicationName: "Relay",
+    applicationName: "Auxilo",
     manifest: "/manifest.webmanifest",
     appleWebApp: {
       capable: true,
       statusBarStyle: "default",
-      title: "Relay",
+      title: "Auxilo",
     },
     formatDetection: { telephone: false },
     icons: {
@@ -41,13 +41,13 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     openGraph: {
       type: "website",
-      title: "Relay — Your day, in sync",
+      title: "Auxilo — Your day, in sync",
       description: "A calm command center for everything that needs your attention.",
-      images: [{ url: `${origin}/og.png`, width: 1200, height: 630, alt: "Relay — Your day, in sync" }],
+      images: [{ url: `${origin}/og.png`, width: 1200, height: 630, alt: "Auxilo — Your day, in sync" }],
     },
     twitter: {
       card: "summary_large_image",
-      title: "Relay — Your day, in sync",
+      title: "Auxilo — Your day, in sync",
       description: "A calm command center for everything that needs your attention.",
       images: [`${origin}/og.png`],
     },

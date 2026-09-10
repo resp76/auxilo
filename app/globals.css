@@ -191,7 +191,7 @@ h2 { margin: 0; font-size: 17px; letter-spacing: -.025em; }.focus-top h2 { font:
 
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
 
-/* Calendar and People extend Relay's existing card and violet palette. */
+/* Calendar and People extend Auxilo's existing card and violet palette. */
 .source-connections, .people-workspace, .connected-calendar { display: grid; gap: 18px; }
 .source-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .source-panel { padding: 24px; min-width: 0; }

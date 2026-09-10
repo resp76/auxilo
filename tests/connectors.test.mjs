@@ -47,9 +47,9 @@ test("Linear reads issues assigned to the viewer and surfaces API errors", async
 test("Notion routes through the allowlisted proxy and reads page titles", async t => {
   t.mock.method(globalThis, "fetch", async (url, options) => {
     assert.equal(String(url), "/api/connector");
-    assert.equal(options.headers["x-relay-provider"], "notion");
-    assert.equal(options.headers["x-relay-path"], "/v1/search");
-    assert.equal(options.headers["x-relay-key"], notionKey);
+    assert.equal(options.headers["x-auxilo-provider"], "notion");
+    assert.equal(options.headers["x-auxilo-path"], "/v1/search");
+    assert.equal(options.headers["x-auxilo-key"], notionKey);
     return Response.json({ results: [{ id: "p1", properties: { Name: { type: "title", title: [{ plain_text: "Launch " }, { plain_text: "plan" }] } } }] });
   });
   const tasks = await readNotionTasks(notionKey);

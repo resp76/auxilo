@@ -8,7 +8,7 @@ type AuthContextValue = { user: User | null; signOut: () => Promise<void> };
 
 const AuthContext = createContext<AuthContextValue>({ user: null, signOut: async () => {} });
 
-export function useRelayAuth() {
+export function useAuxiloAuth() {
   return useContext(AuthContext);
 }
 
@@ -61,7 +61,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         if (active) {
-          setMessage("Relay couldn’t load sign-in. Please refresh and try again.");
+          setMessage("Auxilo couldn’t load sign-in. Please refresh and try again.");
           setLoading(false);
         }
       });
@@ -132,18 +132,18 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }
 
   if (loading) {
-    return <main className="auth-page"><div className="auth-loading"><span className="brand-mark"><i /><i /><i /></span><span>Preparing Relay…</span></div></main>;
+    return <main className="auth-page"><div className="auth-loading"><span className="brand-mark"><i /><i /><i /></span><span>Preparing Auxilo…</span></div></main>;
   }
 
   if (user || demo) {
-    const activeUser = user ?? ({ id: "demo", email: "demo@relay.local", user_metadata: { full_name: "Demo User" }, app_metadata: {}, aud: "authenticated", created_at: "" } satisfies User);
+    const activeUser = user ?? ({ id: "demo", email: "demo@auxilo.local", user_metadata: { full_name: "Demo User" }, app_metadata: {}, aud: "authenticated", created_at: "" } satisfies User);
     return <AuthContext.Provider key={activeUser.id} value={{ user: activeUser, signOut }}>{children}</AuthContext.Provider>;
   }
 
   return (
     <main className="auth-page">
       <section className="auth-panel" aria-labelledby="login-title">
-        <div className="auth-brand"><span className="brand-mark"><i /><i /><i /></span><span>Relay</span></div>
+        <div className="auth-brand"><span className="brand-mark"><i /><i /><i /></span><span>Auxilo</span></div>
         <div className="auth-copy">
           <p className="eyebrow">Your day, in sync</p>
           <h1 id="login-title">Welcome back</h1>
@@ -173,7 +173,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
         {!configured && <p className="auth-message setup">Add the Supabase URL and publishable key to enable sign-in.</p>}
         {!configured && localPreview && <button className="demo-login" type="button" onClick={() => setDemo(true)}>Continue with demo workspace</button>}
         {message && <p className="auth-message" role="status">{message}</p>}
-        <p className="auth-terms">By continuing, you agree to keep your Relay workspace secure.</p>
+        <p className="auth-terms">By continuing, you agree to keep your Auxilo workspace secure.</p>
       </section>
       <aside className="auth-art" aria-hidden="true">
         <div className="auth-orbit orbit-one" /><div className="auth-orbit orbit-two" />
