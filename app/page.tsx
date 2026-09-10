@@ -10,6 +10,7 @@ import { filterCommands, nextIndex, type Command } from "./commands";
 import { readGitHubTasks } from "./github";
 import { readLinearTasks, readNotionTasks, readSlackTasks } from "./connectors";
 import { syncReminderNotifications } from "./mobile-notifications";
+import { mirrorTasks, recoverTasks } from "./durable-storage.ts";
 
 type EmailAccount = { id: number; provider: string; address: string };
 
@@ -66,12 +67,12 @@ function AuxiloDashboard() {
   // changing it would orphan every task already saved in someone's browser.
   const taskStorageKey = `relay.tasks.${user?.id || user?.email || "demo"}`;
   const [savedTasks] = useState(() => {
-    if (typeof window === "undefined") return { tasks: initialTasks, error: "" };
+    if (typeof window === "undefined") return { tasks: initialTasks, error: "", empty: true };
     try {
       const raw = window.localStorage.getItem(taskStorageKey);
-      return { tasks: raw ? parseTasks(raw) : initialTasks, error: "" };
+      return { tasks: raw ? parseTasks(raw) : initialTasks, error: "", empty: !raw };
     } catch {
-      return { tasks: initialTasks, error: "Saved tasks could not be read. Your original data has been preserved. Changes in this tab will not be saved; restore browser storage and reload." };
+      return { tasks: initialTasks, error: "Saved tasks could not be read. Your original data has been preserved. Changes in this tab will not be saved; restore browser storage and reload.", empty: false };
     }
   });
   const [tasks, setTasks] = useState<Task[]>(savedTasks.tasks);
@@ -103,9 +104,24 @@ function AuxiloDashboard() {
 
   useEffect(() => {
     if (savedTasks.error) return;
-    try { window.localStorage.setItem(taskStorageKey, JSON.stringify(tasks)); }
+    const serialised = JSON.stringify(tasks);
+    try { window.localStorage.setItem(taskStorageKey, serialised); }
     catch { queueMicrotask(() => setStorageError("Tasks could not be saved on this device. Keep this tab open and check browser storage.")); }
+    // Native only: keep a copy outside web storage, which iOS may clear.
+    void mirrorTasks(taskStorageKey, serialised);
   }, [savedTasks.error, taskStorageKey, tasks]);
+
+  // If web storage came back empty on device, restore the mirrored copy rather
+  // than silently starting the user over with the sample tasks.
+  const recoveryAttempted = useRef(false);
+  useEffect(() => {
+    if (recoveryAttempted.current || !savedTasks.empty) return;
+    recoveryAttempted.current = true;
+    void recoverTasks(taskStorageKey).then(raw => {
+      if (!raw) return;
+      try { setTasks(parseTasks(raw)); } catch { /* corrupt mirror: keep what is on screen */ }
+    });
+  }, [savedTasks.empty, taskStorageKey]);
 
   // In the native shell, hand pending reminders to iOS so they fire with the
   // app closed. No-op on the web, where the interval below is all there is.

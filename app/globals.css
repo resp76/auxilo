@@ -290,3 +290,13 @@ dialog.reminder-dialog:not([open]) { display: none; }
   .task-copy h3 { white-space: normal; }
   .large-inbox-row button { display: block; grid-column: 2; min-height: 40px; font-size: 12px; }
 }
+
+/* Native shell: the webview draws under the status bar and Dynamic Island
+   (viewport-fit=cover + contentInset "never"). env() resolves to 0 in a normal
+   browser, so these are no-ops on the web. Bottom insets are handled above on
+   .mobile-nav and .workspace. */
+.auth-page { padding-top: env(safe-area-inset-top); }
+.topbar { height: calc(76px + env(safe-area-inset-top)); padding-top: env(safe-area-inset-top); }
+.sidebar { padding-top: calc(28px + env(safe-area-inset-top)); }
+.reminder-toast { top: calc(62px + env(safe-area-inset-top)); }
+dialog.command-palette { margin-top: calc(12vh + env(safe-area-inset-top)); }
