@@ -41,20 +41,14 @@ Reviewed September 9, 2026. Ready for local testing; not yet ready for public pr
 `auxilo.app` was registered at Porkbun on 2026-09-10 and renews 2027-09-10
 (confirm auto-renew is on; losing a brand domain to expiry is unpleasant).
 
-It is **not pointed at the app yet**. It currently resolves to Porkbun's parking
-A records on Porkbun nameservers, and serves nothing over HTTPS. Meanwhile
-`app/layout.tsx` already sets `metadataBase` to `https://auxilo.app`, so
-OpenGraph and Twitter card images 404 until the domain is live. The app itself
-still serves from the generated Sites host and is unaffected.
+**It is live.** As of 2026-09-10 `auxilo.app` resolves through Cloudflare, serves
+the app over HTTPS with a valid certificate, and returns the OpenGraph image at
+`/og.png`. `metadataBase` in `app/layout.tsx` matches the real host, so social
+cards resolve correctly.
 
-`.app` is on the HSTS preload list, so browsers refuse plain HTTP for it. Any
-host it points at must present a valid certificate for `auxilo.app` on the very
-first request — there is no HTTP-then-upgrade path.
-
-Options when picking this up: attach it as a custom domain in the OpenAI Sites
-project (`.openai/hosting.json`), deploy the worker to Cloudflare directly (the
-repo has the worker entry and wrangler, but no wrangler config or deploy script
-yet), or use Porkbun URL forwarding as a stopgap redirect.
+`.app` is on the HSTS preload list, so browsers refuse plain HTTP for it — any
+future host change must present a valid certificate on the first request; there
+is no HTTP-then-upgrade path.
 
 ## Work before release
 
