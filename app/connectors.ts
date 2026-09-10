@@ -1,4 +1,5 @@
 import type { Task } from "./task-reminders";
+import { apiUrl } from "./api-base.ts";
 
 export type ConnectorId = "linear" | "notion" | "slack";
 
@@ -55,7 +56,7 @@ export async function linearRequest<T>(key: string, query: string): Promise<T> {
  */
 export async function proxyRequest<T>(provider: "notion" | "slack", path: string, key: string, body: unknown): Promise<T> {
   if (!key) throw new Error(`Paste a ${provider} key to connect.`);
-  const response = await fetch("/api/connector", {
+  const response = await fetch(apiUrl("/api/connector"), {
     method: "POST",
     signal: AbortSignal.timeout(20000),
     redirect: "error",

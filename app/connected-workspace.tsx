@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { duplicatesFor, findPeople, parseIPhoneExport, readCalendars, readEvents, readPeople, saveEvent } from "./people-calendar";
 import type { Calendar, Event, Person, Session } from "./people-calendar";
+import { apiUrl } from "./api-base";
 
 type TokenResponse = { access_token: string; expires_in: number; scope: string; error?: string };
 type GoogleIdentity = { accounts: { oauth2: { initTokenClient: (options: { client_id: string; scope: string; include_granted_scopes: boolean; callback: (response: TokenResponse) => void; error_callback: () => void }) => { requestAccessToken: (options: { prompt: string }) => void }; revoke: (token: string, callback: () => void) => void } } };
@@ -34,7 +35,7 @@ export function useConnectedWorkspace() {
   const operation = useRef(0);
 
   useEffect(() => {
-    void fetch("/api/google/config").then(r => r.json()).then((r: { clientId?: string }) => { if (r.clientId) setClientId(r.clientId); }).catch(() => {});
+    void fetch(apiUrl("/api/google/config")).then(r => r.json()).then((r: { clientId?: string }) => { if (r.clientId) setClientId(r.clientId); }).catch(() => {});
   }, []);
 
   function loadGoogle() {

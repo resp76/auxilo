@@ -55,3 +55,7 @@ yarn-error.log*
 # Xcode archive/export output
 /build/
 *.xcarchive
+
+# Capacitor build output and native project
+/mobile/dist/
+/ios-app/App/App/public/

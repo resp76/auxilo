@@ -9,6 +9,7 @@ import { dueReminders, filterTasks, parseTasks, reminderInstant, snoozeInstant, 
 import { filterCommands, nextIndex, type Command } from "./commands";
 import { readGitHubTasks } from "./github";
 import { readLinearTasks, readNotionTasks, readSlackTasks } from "./connectors";
+import { syncReminderNotifications } from "./mobile-notifications";
 
 type EmailAccount = { id: number; provider: string; address: string };
 
@@ -105,6 +106,10 @@ function AuxiloDashboard() {
     try { window.localStorage.setItem(taskStorageKey, JSON.stringify(tasks)); }
     catch { queueMicrotask(() => setStorageError("Tasks could not be saved on this device. Keep this tab open and check browser storage.")); }
   }, [savedTasks.error, taskStorageKey, tasks]);
+
+  // In the native shell, hand pending reminders to iOS so they fire with the
+  // app closed. No-op on the web, where the interval below is all there is.
+  useEffect(() => { void syncReminderNotifications(tasks); }, [tasks]);
 
   useEffect(() => {
     // ponytail: tab timers only; server push is needed for delivery with Auxilo closed.

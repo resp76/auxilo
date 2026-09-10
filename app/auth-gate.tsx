@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
+import { apiUrl } from "./api-base";
 import { createContext, type FormEvent, type ReactNode, useContext, useEffect, useState } from "react";
 
 type AuthConfig = { url: string; publishableKey: string };
@@ -29,7 +30,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     let active = true;
     let unsubscribe = () => {};
 
-    void fetch("/api/auth/config", { cache: "no-store" })
+    void fetch(apiUrl("/api/auth/config"), { cache: "no-store" })
       .then((response) => response.json() as Promise<AuthConfig>)
       .then((config) => {
         if (!active) return;

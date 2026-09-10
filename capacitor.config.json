@@ -1,0 +1,13 @@
+{
+  "appId": "com.digitalsandboxlabs.auxilo.mobile",
+  "appName": "Auxilo",
+  "webDir": "mobile/dist",
+  "ios": {
+    "path": "ios-app",
+    "contentInset": "never"
+  },
+  "server": { "androidScheme": "https" },
+  "plugins": {
+    "CapacitorHttp": { "enabled": true }
+  }
+}
