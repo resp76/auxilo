@@ -27,6 +27,9 @@ The second command produces an unsigned device build, not an installable distrib
 
 ## What works in the source
 
+- An intro screen on first launch explaining what the companion does and that no
+  account is needed. Contacts are not requested until you tap Get started; the
+  choice is remembered, so later launches open directly on the form.
 - Explicit selection of contacts through the iOS picker, local contact search, and clearing that selection.
 - Calendar full-access permission request, then per-calendar selection (none selected by default).
 - Read selected events for the next 30 days; native event editor for creation and edits. Saving through EventKit updates the calendar provider subject to iOS/account permissions and connectivity.

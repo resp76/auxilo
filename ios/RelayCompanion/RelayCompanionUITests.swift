@@ -1,9 +1,31 @@
 import XCTest
 
 final class RelayCompanionUITests: XCTestCase {
-    func testLaunchAndCancelContactPicker() {
+    /// The companion opens on an intro screen. These tests skip it explicitly so
+    /// they do not depend on whatever the simulator stored from a previous run.
+    private func launchPastIntro() -> XCUIApplication {
         let app = XCUIApplication()
+        app.launchArguments = ["-relay-skip-intro"]
         app.launch()
+        return app
+    }
+
+    func testIntroAppearsBeforeAnyContactRequest() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-relay-show-intro"]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["Relay Companion"].waitForExistence(timeout: 10))
+        // Nothing may ask for contacts until the intro is acknowledged.
+        XCTAssertFalse(app.buttons["Choose contacts"].exists)
+        let start = app.buttons["Get started"]
+        XCTAssertTrue(start.exists)
+        start.tap()
+        XCTAssertTrue(app.navigationBars["Relay Companion"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Choose contacts"].exists)
+    }
+
+    func testLaunchAndCancelContactPicker() {
+        let app = launchPastIntro()
         XCTAssertTrue(app.navigationBars["Relay Companion"].waitForExistence(timeout: 10))
         app.buttons["Choose contacts"].tap()
         let picker = app.navigationBars["Contacts"]
@@ -16,8 +38,7 @@ final class RelayCompanionUITests: XCTestCase {
     }
 
     func testSelectSearchAndClearContact() {
-        let app = XCUIApplication()
-        app.launch()
+        let app = launchPastIntro()
         app.buttons["Choose contacts"].tap()
         let picker = app.navigationBars["Contacts"]
         XCTAssertTrue(picker.waitForExistence(timeout: 5))
@@ -35,8 +56,7 @@ final class RelayCompanionUITests: XCTestCase {
     }
 
     func testEmptyExportOpensFilePicker() {
-        let app = XCUIApplication()
-        app.launch()
+        let app = launchPastIntro()
         let export = app.buttons["Export selected contacts and events"]
         for _ in 0..<5 {
             if export.isHittable { break }

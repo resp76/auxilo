@@ -98,6 +98,45 @@ struct EditableEvent: Identifiable {
     let event: EKEvent
 }
 
+/// Shown before anything is requested, so the app explains itself instead of
+/// opening on a contact picker. There is no sign-in here on purpose: the
+/// companion never talks to a Relay account, it only writes a file you share.
+struct RelayIntroView: View {
+    let continueAction: () -> Void
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Spacer()
+            Image(systemName: "arrow.triangle.2.circlepath.circle")
+                .font(.system(size: 52))
+                .foregroundStyle(.tint)
+                .accessibilityHidden(true)
+            Text("Relay Companion").font(.largeTitle.bold())
+            Text("Send selected contacts and calendars to your Relay workspace.")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            VStack(alignment: .leading, spacing: 13) {
+                Label("You pick exactly which contacts and calendars are included.", systemImage: "hand.raised")
+                Label("Nothing is uploaded. Relay writes a file that you share yourself.", systemImage: "lock")
+                Label("No account or sign-in is needed on this device.", systemImage: "person.crop.circle.badge.checkmark")
+            }
+            .font(.subheadline)
+            .padding(.top, 4)
+            Spacer()
+            Button(action: continueAction) {
+                Text("Get started").frame(maxWidth: .infinity).padding(.vertical, 6)
+            }
+            .buttonStyle(.borderedProminent)
+            Text("iOS will ask your permission before Relay reads anything.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(26)
+    }
+}
+
 struct RelayCompanionView: View {
     @State private var store = EKEventStore()
     @State private var calendars: [EKCalendar] = []
@@ -110,9 +149,29 @@ struct RelayCompanionView: View {
     @State private var editor: EditableEvent?
     @State private var message = "Select exactly what to share with Relay. Nothing is uploaded automatically."
     @State private var contactSearch = ""
+    @State private var introDismissed = false
+    @AppStorage("relay.companion.introSeen") private var introSeen = false
     @Environment(\.scenePhase) private var scenePhase
 
+    /// Launch arguments let UI tests pin this either way instead of depending
+    /// on whatever the simulator happens to have stored from a previous run.
+    private var showIntro: Bool {
+        if introDismissed { return false }
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-relay-show-intro") { return true }
+        if arguments.contains("-relay-skip-intro") { return false }
+        return !introSeen
+    }
+
     var body: some View {
+        if showIntro {
+            RelayIntroView(continueAction: { introSeen = true; introDismissed = true })
+        } else {
+            companionForm
+        }
+    }
+
+    private var companionForm: some View {
         NavigationStack {
             Form {
                 Section("Contacts") {
