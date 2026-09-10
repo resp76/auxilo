@@ -69,6 +69,20 @@ straight to App Store Connect — there is no separate `altool` call.
 - **External testing** does require Beta App Review, and needs a description,
   test notes, and a privacy policy URL. Auxilo has one at `/privacy`.
 
+## Status
+
+**1.0 (build 1) was uploaded to App Store Connect on 2026-09-10** and accepted
+("Upload succeeded"). The app record exists, so later uploads only need the
+build number bumped.
+
+Authentication came from Xcode's signed-in Apple account via
+`-allowProvisioningUpdates`; no App Store Connect API key was needed. The `.p8`
+key route below is still the right approach for CI, where no Xcode session exists.
+
+After upload, App Store Connect processes the build (usually minutes, sometimes
+longer). It then appears under TestFlight. Because `ITSAppUsesNonExemptEncryption`
+is set, no export-compliance question should be asked.
+
 ## Every subsequent upload
 
 `CURRENT_PROJECT_VERSION` must increase or App Store Connect rejects the build:
