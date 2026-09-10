@@ -9,6 +9,7 @@
 - Hosting manifest: `.openai/hosting.json`
 - Source repository: `https://github.com/resp76/auxilo`
 - Production branch: `main`
+- Domain status: active with HTTPS (verified September 10, 2026)
 
 The custom domains are registered with the existing Sites project. DNS and TLS status are managed by Sites after the records below are published at Porkbun.
 
@@ -50,7 +51,14 @@ DNS changes normally become visible within minutes but can take longer because o
 
 Public Supabase settings are described in [AUTH.md](AUTH.md). Store deployed runtime values in Sites rather than committing them. Never commit `.env.local`, OAuth client secrets, Supabase service-role keys, provider access tokens, or Sites source credentials.
 
-Google OAuth must allow `https://auxilo.app` and `https://www.auxilo.app` as application origins where required. Supabase Auth must include both domains in its redirect allowlist before production sign-in testing.
+Supabase Auth uses the following production URL configuration:
+
+- Site URL: `https://auxilo.app`
+- Redirect URL: `https://auxilo.app/**`
+- Redirect URL: `https://www.auxilo.app/**`
+- Local development redirect: `http://localhost:3000`
+
+Google OAuth must allow `https://auxilo.app` and `https://www.auxilo.app` as application origins where required. The production Google sign-in callback was verified on `https://auxilo.app` on September 10, 2026.
 
 ## Domain renewal and ownership
 
