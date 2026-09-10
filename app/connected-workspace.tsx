@@ -146,7 +146,7 @@ export function SourceConnections({ sources: s }: { sources: Sources }) {
         <div className="source-panel-heading"><span className="connection-logo apple-notes"></span><div><h2>iPhone Calendar & Contacts</h2><p>{s.imported ? "Imported snapshot · no automatic sync" : "Requires the Relay iPhone companion"}</p></div></div>
         <p>Select contacts and calendars on your iPhone, export them from the companion, then open that file here. The web app cannot directly request iOS permissions.</p>
         <ol><li>Build and install the companion with Xcode.</li><li>Select contacts and allow calendar access.</li><li>Choose calendars, export, then import below.</li></ol>
-        <a className="secondary-action" href="/relay-iphone-companion.zip" download>Download iPhone companion source</a>
+        <a className="secondary-action" href="/auxilo-iphone-companion.zip" download>Download iPhone companion source</a>
         <label className="file-import">Import iPhone export<input type="file" accept=".json,application/json" onChange={e => { void s.importFile(e.target.files?.[0]); e.target.value = ""; }} /></label>
         {s.imported && <div className="account-line"><div><strong>Snapshot from {new Date(s.imported).toLocaleString()}</strong><small>Read only in Relay · edit originals on iPhone</small></div><button onClick={s.removeImport}>Remove import</button></div>}
         <p className="muted-copy">Tokens and imported data stay in this browser tab’s memory. Reloading clears them. Import only on a device you trust.</p>

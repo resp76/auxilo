@@ -55,7 +55,7 @@ Scopes: `openid`, `email`, `contacts.readonly` for contact reads, and `calendar.
 
 ## iPhone companion
 
-Download the source through Integrations or [the companion ZIP](https://relay-day-sync.roldee.chatgpt.site/relay-iphone-companion.zip). Full build instructions are included in `ios/RelayCompanion/README.md` and the ZIP.
+Download the source through Integrations or [the companion ZIP](https://relay-day-sync.roldee.chatgpt.site/auxilo-iphone-companion.zip). Full build instructions are included in `ios/AuxiloCompanion/README.md` and the ZIP.
 
 The companion is a standalone SwiftUI source file, not an installed iOS app or signed release. Create an iOS 17+ SwiftUI application in Xcode, add the file, configure the Calendar and Contacts usage descriptions, select a signing team, and run on a device. The EventKit system event editor writes to the source calendar. Selected contacts are read through the system picker.
 
@@ -68,7 +68,7 @@ Web edits are not pushed back to the companion. Automatic pairing, persistent en
 - `app/connected-workspace.tsx`: Google authorization/session state, source setup, People UI, connected calendar UI.
 - `app/people-calendar.ts`: Google API requests, pagination, normalization, event validation, conflict-safe saves, import validation, contact search and duplicate matching.
 - `worker/index.ts`: public client-ID configuration endpoint.
-- `ios/RelayCompanion/`: native source and setup.
+- `ios/AuxiloCompanion/`: native source and setup.
 - `tests/people-calendar.test.mjs`: fixtures/mock requests for import validation, account provenance, pagination, token expiry, allowed destinations, invalid dates, duplicate suggestions, and ETag conflicts.
 
 Run `pnpm test`, `pnpm exec tsc --noEmit`, and ESLint for the changed TypeScript. Tests do not exercise live Google consent or real Apple frameworks. Live Google testing awaits a client ID and test account. The authoring Mac has no iOS SDK or simulator, so native compilation/signing and on-device permission/export tests remain required.

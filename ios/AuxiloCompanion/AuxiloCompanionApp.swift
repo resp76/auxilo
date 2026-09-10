@@ -6,11 +6,11 @@ import ContactsUI
 import UniformTypeIdentifiers
 
 @main
-struct RelayCompanionApp: App {
-    var body: some Scene { WindowGroup { RelayCompanionView() } }
+struct AuxiloCompanionApp: App {
+    var body: some Scene { WindowGroup { AuxiloCompanionView() } }
 }
 
-struct RelayContact: Codable, Identifiable {
+struct AuxiloContact: Codable, Identifiable {
     let id: String
     let name: String
     let email: String
@@ -18,7 +18,7 @@ struct RelayContact: Codable, Identifiable {
     let organization: String
 }
 
-struct RelayEvent: Codable {
+struct AuxiloEvent: Codable {
     let id: String
     let title: String
     let start: String
@@ -28,11 +28,11 @@ struct RelayEvent: Codable {
     let allDay: Bool
 }
 
-struct RelaySnapshot: Encodable {
+struct AuxiloSnapshot: Encodable {
     let version = 1
     let exportedAt: String
-    let contacts: [RelayContact]
-    let events: [RelayEvent]
+    let contacts: [AuxiloContact]
+    let events: [AuxiloEvent]
 }
 
 struct SnapshotDocument: FileDocument {
@@ -67,7 +67,7 @@ struct CalendarEditor: UIViewControllerRepresentable {
 }
 
 struct ContactPicker: UIViewControllerRepresentable {
-    let selected: ([RelayContact]) -> Void
+    let selected: ([AuxiloContact]) -> Void
     let cancelled: () -> Void
     func makeCoordinator() -> Coordinator { Coordinator(selected: selected, cancelled: cancelled) }
     func makeUIViewController(context: Context) -> CNContactPickerViewController {
@@ -77,13 +77,13 @@ struct ContactPicker: UIViewControllerRepresentable {
     }
     func updateUIViewController(_ controller: CNContactPickerViewController, context: Context) {}
     final class Coordinator: NSObject, CNContactPickerDelegate {
-        let selected: ([RelayContact]) -> Void
+        let selected: ([AuxiloContact]) -> Void
         let cancelled: () -> Void
-        init(selected: @escaping ([RelayContact]) -> Void, cancelled: @escaping () -> Void) { self.selected = selected; self.cancelled = cancelled }
+        init(selected: @escaping ([AuxiloContact]) -> Void, cancelled: @escaping () -> Void) { self.selected = selected; self.cancelled = cancelled }
         func contactPickerDidCancel(_ picker: CNContactPickerViewController) { cancelled() }
         func contactPicker(_ picker: CNContactPickerViewController, didSelect contacts: [CNContact]) {
             selected(contacts.map { contact in
-                RelayContact(id: contact.identifier,
+                AuxiloContact(id: contact.identifier,
                     name: CNContactFormatter.string(from: contact, style: .fullName) ?? "Unnamed contact",
                     email: contact.emailAddresses.first.map { $0.value as String } ?? "",
                     phone: contact.phoneNumbers.first?.value.stringValue ?? "",
@@ -100,8 +100,8 @@ struct EditableEvent: Identifiable {
 
 /// Shown before anything is requested, so the app explains itself instead of
 /// opening on a contact picker. There is no sign-in here on purpose: the
-/// companion never talks to a Relay account, it only writes a file you share.
-struct RelayIntroView: View {
+/// companion never talks to a Auxilo account, it only writes a file you share.
+struct AuxiloIntroView: View {
     let continueAction: () -> Void
 
     var body: some View {
@@ -111,14 +111,14 @@ struct RelayIntroView: View {
                 .font(.system(size: 52))
                 .foregroundStyle(.tint)
                 .accessibilityHidden(true)
-            Text("Relay Companion").font(.largeTitle.bold())
-            Text("Send selected contacts and calendars to your Relay workspace.")
+            Text("Auxilo").font(.largeTitle.bold())
+            Text("Send selected contacts and calendars to your Auxilo workspace.")
                 .font(.headline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             VStack(alignment: .leading, spacing: 13) {
                 Label("You pick exactly which contacts and calendars are included.", systemImage: "hand.raised")
-                Label("Nothing is uploaded. Relay writes a file that you share yourself.", systemImage: "lock")
+                Label("Nothing is uploaded. Auxilo writes a file that you share yourself.", systemImage: "lock")
                 Label("No account or sign-in is needed on this device.", systemImage: "person.crop.circle.badge.checkmark")
             }
             .font(.subheadline)
@@ -128,7 +128,7 @@ struct RelayIntroView: View {
                 Text("Get started").frame(maxWidth: .infinity).padding(.vertical, 6)
             }
             .buttonStyle(.borderedProminent)
-            Text("iOS will ask your permission before Relay reads anything.")
+            Text("iOS will ask your permission before Auxilo reads anything.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -137,19 +137,21 @@ struct RelayIntroView: View {
     }
 }
 
-struct RelayCompanionView: View {
+struct AuxiloCompanionView: View {
     @State private var store = EKEventStore()
     @State private var calendars: [EKCalendar] = []
     @State private var selectedCalendars: Set<String> = []
-    @State private var contacts: [RelayContact] = []
+    @State private var contacts: [AuxiloContact] = []
     @State private var events: [EKEvent] = []
     @State private var showContacts = false
     @State private var showExport = false
     @State private var document = SnapshotDocument(data: Data())
     @State private var editor: EditableEvent?
-    @State private var message = "Select exactly what to share with Relay. Nothing is uploaded automatically."
+    @State private var message = "Select exactly what to share with Auxilo. Nothing is uploaded automatically."
     @State private var contactSearch = ""
     @State private var introDismissed = false
+    // Storage key deliberately keeps the old "relay." prefix: renaming it would
+    // re-show the intro to anyone who already dismissed it. It is internal.
     @AppStorage("relay.companion.introSeen") private var introSeen = false
     @Environment(\.scenePhase) private var scenePhase
 
@@ -158,14 +160,14 @@ struct RelayCompanionView: View {
     private var showIntro: Bool {
         if introDismissed { return false }
         let arguments = ProcessInfo.processInfo.arguments
-        if arguments.contains("-relay-show-intro") { return true }
-        if arguments.contains("-relay-skip-intro") { return false }
+        if arguments.contains("-auxilo-show-intro") { return true }
+        if arguments.contains("-auxilo-skip-intro") { return false }
         return !introSeen
     }
 
     var body: some View {
         if showIntro {
-            RelayIntroView(continueAction: { introSeen = true; introDismissed = true })
+            AuxiloIntroView(continueAction: { introSeen = true; introDismissed = true })
         } else {
             companionForm
         }
@@ -203,7 +205,7 @@ struct RelayCompanionView: View {
                             editor = EditableEvent(event: event)
                         }
                     }
-                    Text("Reading events requires iOS full calendar permission. Relay exports only the calendars selected above.").font(.caption)
+                    Text("Reading events requires iOS full calendar permission. Auxilo exports only the calendars selected above.").font(.caption)
                 }
                 Section("Next 30 days") {
                     ForEach(Array(events.enumerated()), id: \.offset) { _, event in
@@ -216,20 +218,20 @@ struct RelayCompanionView: View {
                         }.disabled(!event.calendar.allowsContentModifications)
                     }
                 }
-                Section("Export to Relay") {
+                Section("Export to Auxilo") {
                     Text(message).font(.callout)
                     Button("Export selected contacts and events") { export() }
-                    Text("Save the JSON file, then choose Integrations → Import iPhone export in Relay. The file contains personal data: share it only with your own Relay session. Exports are snapshots; repeat the export to update Relay.").font(.caption)
-                    Link("Open Relay", destination: URL(string: "https://relay-day-sync.roldee.chatgpt.site/")!)
+                    Text("Save the JSON file, then choose Integrations → Import iPhone export in Auxilo. The file contains personal data: share it only with your own Auxilo session. Exports are snapshots; repeat the export to update Auxilo.").font(.caption)
+                    Link("Open Auxilo", destination: URL(string: "https://relay-day-sync.roldee.chatgpt.site/")!)
                 }
             }
-            .navigationTitle("Relay Companion")
+            .navigationTitle("Auxilo")
             .sheet(isPresented: $showContacts) {
                 ContactPicker(selected: { contacts = $0; showContacts = false }, cancelled: { showContacts = false })
             }
             .sheet(item: $editor) { item in CalendarEditor(store: store, event: item.event, done: { editor = nil; refreshEvents() }) }
-            .fileExporter(isPresented: $showExport, document: document, contentType: .json, defaultFilename: "relay-iphone-export") { result in
-                switch result { case .success: message = "Export saved. Import it in Relay to update the snapshot."; case .failure: message = "Export was not saved. You can try again." }
+            .fileExporter(isPresented: $showExport, document: document, contentType: .json, defaultFilename: "auxilo-iphone-export") { result in
+                switch result { case .success: message = "Export saved. Import it in Auxilo to update the snapshot."; case .failure: message = "Export was not saved. You can try again." }
             }
             .onChange(of: scenePhase) { _, phase in if phase == .active { refreshEvents() } }
             .onReceive(NotificationCenter.default.publisher(for: .EKEventStoreChanged)) { _ in refreshEvents() }
@@ -259,8 +261,8 @@ struct RelayCompanionView: View {
         guard contacts.count <= 10000, events.count <= 10000 else { message = "Too many records. Choose fewer contacts or calendars (10,000 maximum each)."; return }
         let iso = ISO8601DateFormatter()
         let dateOnly = DateFormatter(); dateOnly.locale = Locale(identifier: "en_US_POSIX"); dateOnly.calendar = Calendar(identifier: .gregorian); dateOnly.dateFormat = "yyyy-MM-dd"
-        let snapshot = RelaySnapshot(exportedAt: iso.string(from: Date()), contacts: contacts, events: events.map { event in
-            RelayEvent(id: "\(event.eventIdentifier ?? UUID().uuidString):\(iso.string(from: event.startDate))", title: event.title ?? "Untitled event", start: event.isAllDay ? dateOnly.string(from: event.startDate) : iso.string(from: event.startDate), end: event.isAllDay ? dateOnly.string(from: event.endDate) : iso.string(from: event.endDate), calendarId: event.calendar.calendarIdentifier, calendarName: event.calendar.title, allDay: event.isAllDay)
+        let snapshot = AuxiloSnapshot(exportedAt: iso.string(from: Date()), contacts: contacts, events: events.map { event in
+            AuxiloEvent(id: "\(event.eventIdentifier ?? UUID().uuidString):\(iso.string(from: event.startDate))", title: event.title ?? "Untitled event", start: event.isAllDay ? dateOnly.string(from: event.startDate) : iso.string(from: event.startDate), end: event.isAllDay ? dateOnly.string(from: event.endDate) : iso.string(from: event.endDate), calendarId: event.calendar.calendarIdentifier, calendarName: event.calendar.title, allDay: event.isAllDay)
         })
         do {
             let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

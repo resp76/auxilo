@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Relay Companion</string>
+	<string>Auxilo</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -25,9 +25,9 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>Relay reads calendars you select and lets you edit events. Only selected calendar snapshots are exported when you choose Export.</string>
+	<string>Auxilo reads calendars you select and lets you edit events. Only selected calendar snapshots are exported when you choose Export.</string>
 	<key>NSContactsUsageDescription</key>
-	<string>Relay uses contacts you select for search and an export you control.</string>
+	<string>Auxilo uses contacts you select for search and an export you control.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

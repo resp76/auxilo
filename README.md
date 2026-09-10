@@ -36,7 +36,7 @@ pnpm test
 
 ## iPhone app
 
-Open `ios/RelayCompanion/RelayCompanion.xcodeproj` in Xcode. Select the shared **RelayCompanion** scheme and an iPhone simulator, then Run. See [native build instructions](ios/RelayCompanion/README.md) for signing and device checks.
+Open `ios/AuxiloCompanion/AuxiloCompanion.xcodeproj` in Xcode. Select the shared **AuxiloCompanion** scheme and an iPhone simulator, then Run. See [native build instructions](ios/AuxiloCompanion/README.md) for signing and device checks.
 
 The native app is a Calendar/Contacts companion. The productivity dashboard runs on the web. See [readiness report](docs/READINESS.md) for verified behavior and remaining release work.
 

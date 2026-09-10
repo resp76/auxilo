@@ -1,4 +1,4 @@
-# Shipping RelayCompanion to TestFlight
+# Shipping Auxilo to TestFlight
 
 The companion is the **Contacts/Calendar export utility**, not the Relay
 dashboard. The dashboard stays on the web. Distributing this to TestFlight puts
@@ -10,7 +10,7 @@ the exporter on your phone properly instead of side-loading it from Xcode.
 |---|---|
 | Team | `DEVELOPMENT_TEAM = 4873VMS3TY` (Sandbox Digital Labs LLC) |
 | Signing style | `CODE_SIGN_STYLE = Automatic` |
-| Bundle id | `com.resp76.relay.companion` |
+| Bundle id | `com.digitalsandboxlabs.auxilo` |
 | Version / build | `MARKETING_VERSION = 1.0`, `CURRENT_PROJECT_VERSION = 1` |
 | Export options | `method: app-store-connect`, `destination: upload`, team set |
 | App icon | 1024×1024 present |
@@ -23,11 +23,11 @@ the exporter on your phone properly instead of side-loading it from Xcode.
 These need your Apple ID, so they can't be scripted here.
 
 1. **Create the app record** in App Store Connect → Apps → **+** → New App.
-   - Platform iOS, Bundle ID `com.resp76.relay.companion` (pick it from the list;
+   - Platform iOS, Bundle ID `com.digitalsandboxlabs.auxilo` (pick it from the list;
      if it is absent, archiving once with automatic signing registers it, or add
      it under Certificates, Identifiers & Profiles → Identifiers)
-   - SKU: anything unique, e.g. `relay-companion`
-   - Name must be unique across the App Store; "Relay Companion" may be taken.
+   - SKU: anything unique, e.g. `auxilo-companion`
+   - Name must be unique across the App Store. "Auxilo" showed 0 matches when checked, but only App Store Connect confirms it.
 
 2. **Create an App Store Connect API key** (Users and Access → Integrations →
    App Store Connect API → **+**), role *App Manager*. Download the `.p8`
@@ -40,17 +40,17 @@ These need your Apple ID, so they can't be scripted here.
 ## Archive and upload
 
 ```sh
-xcodebuild -project ios/RelayCompanion/RelayCompanion.xcodeproj \
-  -scheme RelayCompanion -configuration Release \
+xcodebuild -project ios/AuxiloCompanion/AuxiloCompanion.xcodeproj \
+  -scheme AuxiloCompanion -configuration Release \
   -destination 'generic/platform=iOS' \
-  -archivePath build/RelayCompanion.xcarchive \
+  -archivePath build/AuxiloCompanion.xcarchive \
   -allowProvisioningUpdates archive
 ```
 
 ```sh
 xcodebuild -exportArchive \
-  -archivePath build/RelayCompanion.xcarchive \
-  -exportOptionsPlist ios/RelayCompanion/ExportOptions.plist \
+  -archivePath build/AuxiloCompanion.xcarchive \
+  -exportOptionsPlist ios/AuxiloCompanion/ExportOptions.plist \
   -exportPath build/export \
   -allowProvisioningUpdates \
   -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_<KEYID>.p8 \
@@ -74,7 +74,7 @@ straight to App Store Connect — there is no separate `altool` call.
 `CURRENT_PROJECT_VERSION` must increase or App Store Connect rejects the build:
 
 ```sh
-xcrun agvtool next-version -all   # run inside ios/RelayCompanion
+xcrun agvtool next-version -all   # run inside ios/AuxiloCompanion
 ```
 
 ## Known gaps before external testing
@@ -85,6 +85,8 @@ xcrun agvtool next-version -all   # run inside ios/RelayCompanion
 - No physical-device run has been done — only simulator and an unsigned device
   build. Verify contacts, calendar permission, and export on real hardware
   before inviting anyone.
-- The bundle id prefix `com.resp76.*` doesn't match your other app's
-  `com.digitalsandboxlabs.*`. Harmless, but rename now if you want consistency —
-  it cannot change after the app record exists.
+- The bundle id is now `com.digitalsandboxlabs.auxilo`, matching your other
+  app's prefix. It cannot change once the app record exists.
+- `auxilo.com` belongs to Auxilo Finserve (Indian education lending). Different
+  trademark class and territory, but check USPTO before external release;
+  `auxilo.app` and `getauxilo.com` are free.
