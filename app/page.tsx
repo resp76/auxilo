@@ -244,7 +244,7 @@ function AuxiloDashboard() {
     <main className="app-shell">
       <aside className={menuOpen ? "sidebar mobile-open" : "sidebar"}>
         <div className="brand" aria-label="Auxilo home">
-          <span className="brand-mark"><i /><i /><i /></span>
+          <span className="brand-mark" />
           <span>Auxilo</span>
         </div>
 
@@ -277,7 +277,7 @@ function AuxiloDashboard() {
 
       <section className="workspace">
         <header className="topbar">
-          <button className="mobile-brand" aria-label="Open navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><span className="brand-mark small"><i /><i /><i /></span></button>
+          <button className="mobile-brand" aria-label="Open navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><span className="brand-mark small" /></button>
           <div className="search"><span>⌕</span><input aria-label="Search notes or people" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder={nav === "People" ? "Search people…" : nav === "Notes" ? "Search iPhone Notes…" : "Search people…"} onKeyDown={e => { if (e.key === "Enter" && nav !== "Notes") setNav("People"); }} /></div>
           <div className="top-actions">
             <button className={customizing ? "customize-button active" : "customize-button"} onClick={() => setCustomizing((value) => !value)}>Customize</button>

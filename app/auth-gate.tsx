@@ -132,7 +132,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }
 
   if (loading) {
-    return <main className="auth-page"><div className="auth-loading"><span className="brand-mark"><i /><i /><i /></span><span>Preparing Auxilo…</span></div></main>;
+    return <main className="auth-page"><div className="auth-loading"><span className="brand-mark" /><span>Preparing Auxilo…</span></div></main>;
   }
 
   if (user || demo) {
@@ -143,7 +143,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   return (
     <main className="auth-page">
       <section className="auth-panel" aria-labelledby="login-title">
-        <div className="auth-brand"><span className="brand-mark"><i /><i /><i /></span><span>Auxilo</span></div>
+        <div className="auth-brand"><span className="brand-mark" /><span>Auxilo</span></div>
         <div className="auth-copy">
           <p className="eyebrow">Your day, in sync</p>
           <h1 id="login-title">Welcome back</h1>
