@@ -43,6 +43,7 @@ The native app is a Calendar/Contacts companion. The productivity dashboard runs
 ## Data and integrations
 
 - Supabase authenticates users. Setup: [docs/AUTH.md](docs/AUTH.md).
+- Production hosting, custom-domain DNS, and the release procedure are documented in [docs/WEB-DEPLOYMENT.md](docs/WEB-DEPLOYMENT.md).
 - Tasks and reminder times are stored in this browser per account. Reminders need Auxilo open; background delivery and cross-device task sync are not implemented.
 - Google Calendar/People access uses separate OAuth setup from Google sign-in. Imported iPhone records are read-only and held in the current tab's memory.
 - GitHub, Linear, Notion, and Slack are live paste-a-key connectors. See [docs/CONNECTORS.md](docs/CONNECTORS.md).
