@@ -6,6 +6,7 @@ import type { Person } from "./people-calendar";
 import { AuthGate, useRelayAuth } from "./auth-gate";
 
 import { dueReminders, filterTasks, parseTasks, reminderInstant, type Task } from "./task-reminders";
+import { readGitHubTasks } from "./github";
 
 type EmailAccount = { id: number; provider: string; address: string };
 
@@ -129,6 +130,9 @@ function RelayDashboard() {
 
   function followUp(person: Person) {
     setTasks(current => [...current, { id: Date.now(), title: `Follow up with ${person.name}`, meta: `${person.email || person.organization || person.account} · Local task${person.source === "Demo" ? " · Sample contact" : ""}`, source: "Personal", done: false, priority: true }]);
+  }
+  function mergeGitHubTasks(githubTasks: Task[]) {
+    setTasks(current => [...current.filter(task => task.source !== "GitHub"), ...githubTasks]);
   }
   const completed = useMemo(() => tasks.filter((task) => task.done).length, [tasks]);
   const reminderTasks = useMemo(() => tasks.filter((task) => !task.done && task.reminderAt), [tasks]);
@@ -262,6 +266,7 @@ function RelayDashboard() {
             openReminder={openReminder}
             clock={clock}
             addFromInbox={(title) => { setTasks(current => [...current, { id: Date.now(), title, meta: "Personal · From sample inbox", source: "Personal", done: false, priority: true }]); setNav("Tasks"); }}
+            onGitHubTasks={mergeGitHubTasks}
           />
         )}
 
@@ -374,6 +379,7 @@ function ModuleView({
   openReminder,
   clock,
   addFromInbox,
+  onGitHubTasks,
 }: {
   name: string;
   tasks: Task[];
@@ -393,6 +399,7 @@ function ModuleView({
   openReminder: (task: Task) => void;
   clock: number;
   addFromInbox: (title: string) => void;
+  onGitHubTasks: (tasks: Task[]) => void;
 }) {
   const [taskFilter, setTaskFilter] = useState("All");
   const descriptions: Record<string, string> = {
@@ -442,9 +449,7 @@ function ModuleView({
             ))}
           </div>
 
-          <div className="connections-grid">
-            {[["GitHub", "⌘", "Repositories · Demo", "Track issues, pull requests, and mentions."]].map(([service, mark, type, copy]) => <article className="module-card connection-card" key={service}><div className={`connection-logo ${service.toLowerCase()}`}>{mark}</div><div className="connection-copy"><small>{type}</small><h2>{service}</h2><p>{copy}</p></div><button className="connect-button" onClick={() => toggleConnection(service)}>{connections[service] ? "Demo enabled" : "Try demo"}</button></article>)}
-          </div>
+          <GitHubConnect onTasks={onGitHubTasks} />
           <div className="connections-grid">
             {[["Slack", "S", "Team messages", "Track mentions, saved messages, and follow-ups."], ["Linear", "L", "Product work", "Sync issues, cycles, projects, and due dates."], ["Notion", "N", "Docs & databases", "Bring action items, decisions, and project pages into Relay."], ["Apple Notes", "▤", "Planned bridge", "Explore sample notes. Device access is not available yet."]].map(([service, mark, type, copy]) => <article className="module-card connection-card" key={service}><div className={`connection-logo ${service.toLowerCase().replace(" ", "-")}`}>{mark}</div><div className="connection-copy"><small>{type} · Demo</small><h2>{service}</h2><p>{copy}</p></div><button className="connect-button" onClick={() => toggleConnection(service)}>{connections[service] ? "Demo enabled" : "Try demo"}</button></article>)}
           </div>
@@ -488,6 +493,38 @@ function ModuleView({
           <button className="new-project" disabled title="Project editing is coming later">＋<span>New project</span></button>
         </div>
       )}
+    </section>
+  );
+}
+
+function GitHubConnect({ onTasks }: { onTasks: (tasks: Task[]) => void }) {
+  const [token, setToken] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  async function connect(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setMessage("Reading the issues and pull requests assigned to you…");
+    try {
+      const githubTasks = await readGitHubTasks(token.trim());
+      onTasks(githubTasks);
+      setMessage(`Loaded ${githubTasks.length} open GitHub item${githubTasks.length === 1 ? "" : "s"} assigned to you into Tasks. Your token stays in this browser tab only.`);
+      setToken("");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not reach GitHub.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section className="module-card github-connector">
+      <div className="email-connector-heading"><div><span className="section-kicker">GitHub · Live</span><h2>Bring your assigned issues and PRs into Tasks</h2></div><span className="connection-logo github">⌘</span></div>
+      <form className="email-form" onSubmit={connect}>
+        <label><span>Fine-grained token</span><input type="password" autoComplete="off" value={token} onChange={e => setToken(e.target.value)} placeholder="github_pat_…" disabled={busy} /></label>
+        <button type="submit" disabled={busy || !token.trim()}>{busy ? "Connecting…" : "Connect GitHub"}</button>
+      </form>
+      <p className="muted-copy">Create a fine-grained token with read-only <strong>Issues</strong> access, then paste it above. It is sent only to api.github.com from this tab, never stored or uploaded. <a className="source-link" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noreferrer">Create a token ↗</a></p>
+      {message && <p className="source-feedback" role="status">{message}</p>}
     </section>
   );
 }

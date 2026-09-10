@@ -1,0 +1,11 @@
+# Local dev secrets for `vinext dev` (wrangler reads .dev.vars). Copy to `.dev.vars`.
+# .dev.vars is gitignored by the existing `.env*`-style ignore; never commit real values.
+
+# Public Google OAuth web client ID. Enables the live "Choose Google account"
+# button for Calendar/Contacts. This is public (no secret). Register this site's
+# origin as an authorized JavaScript origin and enable the People + Calendar APIs.
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+
+# Supabase project (see docs/AUTH.md). Publishable key only — never the secret key.
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_your_key
