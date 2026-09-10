@@ -19,6 +19,23 @@ Reviewed September 9, 2026. Ready for local testing; not yet ready for public pr
 - Browser QA used a demo account with mocked absent auth configuration. Actual Google sign-in was verified earlier in this project session, but was not repeated in this review. Email delivery and account recovery require live-account testing.
 - iOS simulator Debug build and unsigned iOS device Release build succeeded with Xcode 26.6/iOS 26.5. All 3 simulator UI tests passed.
 
+## Added after the September 9 review
+
+- GitHub, Linear, Notion, and Slack are live paste-a-key connectors that load real
+  items into Tasks. GitHub and Linear are called directly from the browser;
+  Notion and Slack are forwarded by an allowlisted worker route because they
+  refuse browser calls. See [connectors](CONNECTORS.md).
+- `GOOGLE_CLIENT_ID` is now readable from `.dev.vars` locally, so Google
+  Calendar/Contacts goes live once a public client ID is supplied.
+- Command palette (⌘K) with fuzzy matching, and reminder snooze (10 min, 1 hour,
+  tomorrow 9am).
+- Verified live: the proxy allowlist rejects unknown providers and off-origin
+  paths, and real 401s from api.notion.com and slack.com are forwarded intact.
+  Connector keys are never persisted; only pasted keys in tab memory are used.
+- Still unverified against live provider data: no real GitHub/Linear/Notion/Slack
+  token was used in testing, so mapping was exercised against mocked payloads
+  and the transport against real (unauthenticated) API responses.
+
 ## Work before release
 
 - Configure Apple signing/team and App Store Connect; test on a physical iPhone before TestFlight. The native app is a Contacts/Calendar export companion, not a complete native dashboard.

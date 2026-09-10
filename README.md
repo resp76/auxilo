@@ -15,6 +15,15 @@ pnpm dev
 
 Open http://localhost:3000. A demo workspace is available without authentication configuration. Never commit `.env.local` or OAuth secrets.
 
+## Keyboard
+
+Press **⌘K** (Ctrl+K) anywhere to open the command palette: jump to any module,
+add a task, toggle compact rows, or snooze an active reminder. Matching is
+fuzzy, so `gtt` finds "Go to Tasks". ↑/↓ move, Enter runs, Esc closes.
+
+Reminders can be snoozed by 10 minutes, 1 hour, or until tomorrow 9am from the
+reminder dialog or the palette.
+
 ## Check the web app
 
 ```sh
@@ -36,5 +45,6 @@ The native app is a Calendar/Contacts companion. The productivity dashboard runs
 - Supabase authenticates users. Setup: [docs/AUTH.md](docs/AUTH.md).
 - Tasks and reminder times are stored in this browser per account. Reminders need Relay open; background delivery and cross-device task sync are not implemented.
 - Google Calendar/People access uses separate OAuth setup from Google sign-in. Imported iPhone records are read-only and held in the current tab's memory.
-- Inbox, projects, spaces, and several connector cards are previews. They do not represent live provider sync.
+- GitHub, Linear, Notion, and Slack are live paste-a-key connectors. See [docs/CONNECTORS.md](docs/CONNECTORS.md).
+- Inbox, email accounts, projects, spaces, and Apple Notes are previews. They do not represent live provider sync.
 - Hosting uses vinext and Sites configuration in `.openai/hosting.json`. Database schema is currently empty.

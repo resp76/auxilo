@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { ConnectedCalendar, PeopleWorkspace, SourceConnections, useConnectedWorkspace } from "./connected-workspace";
 import type { Person } from "./people-calendar";
 import { AuthGate, useRelayAuth } from "./auth-gate";
 
-import { dueReminders, filterTasks, parseTasks, reminderInstant, type Task } from "./task-reminders";
+import { dueReminders, filterTasks, parseTasks, reminderInstant, snoozeInstant, tomorrowAt, type Task } from "./task-reminders";
+import { filterCommands, nextIndex, type Command } from "./commands";
 import { readGitHubTasks } from "./github";
+import { readLinearTasks, readNotionTasks, readSlackTasks } from "./connectors";
 
 type EmailAccount = { id: number; provider: string; address: string };
 
@@ -38,6 +40,9 @@ const iconFor: Record<Task["source"], string> = {
   Gmail: "M",
   Personal: "✓",
   Calendar: "□",
+  Linear: "L",
+  Notion: "N",
+  Slack: "S",
 };
 
 function formatReminder(value: string) {
@@ -86,6 +91,11 @@ function RelayDashboard() {
   const [emailProvider, setEmailProvider] = useState("Gmail");
   const [emailAddress, setEmailAddress] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState("");
+  const [paletteIndex, setPaletteIndex] = useState(0);
+  const paletteDialog = useRef<HTMLDialogElement>(null);
+  const paletteInput = useRef<HTMLInputElement>(null);
   const sources = useConnectedWorkspace();
 
   useEffect(() => {
@@ -122,6 +132,24 @@ function RelayDashboard() {
     else reminderDialog.current?.close();
   }, [reminderTaskId]);
 
+  useEffect(() => {
+    if (paletteOpen) { paletteDialog.current?.showModal(); paletteInput.current?.focus(); }
+    else paletteDialog.current?.close();
+  }, [paletteOpen]);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setPaletteQuery("");
+        setPaletteIndex(0);
+        setPaletteOpen(open => !open);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   function requestNotifications() {
     if ("Notification" in window && Notification.permission === "default") {
       void Notification.requestPermission().catch(() => setReminderNotice("Reminder saved. Desktop notifications are unavailable; keep Relay open for in-app alerts."));
@@ -131,8 +159,8 @@ function RelayDashboard() {
   function followUp(person: Person) {
     setTasks(current => [...current, { id: Date.now(), title: `Follow up with ${person.name}`, meta: `${person.email || person.organization || person.account} · Local task${person.source === "Demo" ? " · Sample contact" : ""}`, source: "Personal", done: false, priority: true }]);
   }
-  function mergeGitHubTasks(githubTasks: Task[]) {
-    setTasks(current => [...current.filter(task => task.source !== "GitHub"), ...githubTasks]);
+  function mergeSourceTasks(source: Task["source"], incoming: Task[]) {
+    setTasks(current => [...current.filter(task => task.source !== source), ...incoming]);
   }
   const completed = useMemo(() => tasks.filter((task) => task.done).length, [tasks]);
   const reminderTasks = useMemo(() => tasks.filter((task) => !task.done && task.reminderAt), [tasks]);
@@ -180,6 +208,34 @@ function RelayDashboard() {
     setTasks((current) => current.map((task) => task.id === reminderTask.id ? { ...task, reminderAt: undefined } : task));
     setReminderNotice(`Reminder removed from ${reminderTask.title}.`);
     setReminderTaskId(null);
+  }
+
+  function snoozeTask(task: Task, minutes: number | "tomorrow") {
+    // `clock` ticks every second, so it stands in for now without an impure read.
+    const reminderAt = minutes === "tomorrow" ? tomorrowAt(clock) : snoozeInstant(minutes, clock);
+    setTasks((current) => current.map((item) => item.id === task.id ? { ...item, reminderAt } : item));
+    setReminderNotice(`Snoozed ${task.title} until ${formatReminder(reminderAt)}.`);
+    setReminderTaskId(null);
+  }
+
+  const commands: Command[] = [
+    ...["Today", "Inbox", "Calendar", "Tasks", "Projects", "People", "Notes", "Integrations"].map((item) => ({
+      id: `nav-${item}`, label: `Go to ${item}`, group: "Navigate", run: () => { setNav(item); setMenuOpen(false); },
+    })),
+    { id: "add", label: "Add a task", group: "Actions", hint: "focuses quick add", run: () => { setNav("Today"); setTimeout(() => document.getElementById("quick-add")?.focus(), 0); } },
+    { id: "compact", label: compact ? "Turn off compact task rows" : "Turn on compact task rows", group: "Actions", run: () => setCompact((value) => !value) },
+    { id: "customize", label: "Customize dashboard", group: "Actions", run: () => setCustomizing(true) },
+    ...reminderTasks.flatMap((task) => [
+      { id: `snooze-hour-${task.id}`, label: `Snooze “${task.title}” for 1 hour`, group: "Snooze", run: () => snoozeTask(task, 60) },
+      { id: `snooze-tomorrow-${task.id}`, label: `Snooze “${task.title}” until tomorrow 9am`, group: "Snooze", run: () => snoozeTask(task, "tomorrow") },
+    ]),
+    { id: "signout", label: "Sign out", group: "Account", run: () => void signOut() },
+  ];
+  const paletteResults = filterCommands(commands, paletteQuery);
+
+  function runCommand(command: Command) {
+    setPaletteOpen(false);
+    command.run();
   }
 
   return (
@@ -266,7 +322,7 @@ function RelayDashboard() {
             openReminder={openReminder}
             clock={clock}
             addFromInbox={(title) => { setTasks(current => [...current, { id: Date.now(), title, meta: "Personal · From sample inbox", source: "Personal", done: false, priority: true }]); setNav("Tasks"); }}
-            onGitHubTasks={mergeGitHubTasks}
+            onSourceTasks={mergeSourceTasks}
           />
         )}
 
@@ -313,7 +369,7 @@ function RelayDashboard() {
 
           <aside className="right-rail">
             <section className="rail-card quick-add">
-              <div className="rail-title"><h2>Quick add</h2><span>⌘ ↵</span></div>
+              <div className="rail-title"><h2>Quick add</h2><button type="button" className="palette-trigger" title="Open the command palette" onClick={() => { setPaletteQuery(""); setPaletteIndex(0); setPaletteOpen(true); }}>⌘K</button></div>
               <div className="quick-input"><input id="quick-add" value={newTask} onChange={(event) => setNewTask(event.target.value)} onKeyDown={(event) => event.key === "Enter" && addTask()} placeholder="What needs doing?" /><button onClick={addTask} aria-label="Add quick task">↑</button></div>
               <div className="quick-meta"><span><span className="space-dot purple" />Personal task</span><button aria-expanded={quickDetails} onClick={() => setQuickDetails((value) => !value)}>＋ Details</button></div>
               {quickDetails && <label className="quick-reminder"><span>Remind me</span><input type="datetime-local" min={localDateTimeValue(new Date(clock))} value={newTaskReminder} onChange={(event) => setNewTaskReminder(event.target.value)} /></label>}
@@ -348,6 +404,12 @@ function RelayDashboard() {
           <h2 id="reminder-title">{reminderTask.title}</h2>
           <label htmlFor="reminder-at">Remind me at</label>
           <input id="reminder-at" type="datetime-local" required min={localDateTimeValue(new Date(clock))} value={reminderValue} onChange={(event) => setReminderValue(event.target.value)} />
+          <div className="snooze-row">
+            <span>Snooze</span>
+            <button type="button" onClick={() => snoozeTask(reminderTask, 10)}>10 min</button>
+            <button type="button" onClick={() => snoozeTask(reminderTask, 60)}>1 hour</button>
+            <button type="button" onClick={() => snoozeTask(reminderTask, "tomorrow")}>Tomorrow 9am</button>
+          </div>
           <div className="reminder-actions">
             {reminderTask.reminderAt && <button className="remove-reminder" type="button" onClick={removeReminder}>Remove</button>}
             <button className="save-reminder" type="submit">Save reminder</button>
@@ -355,6 +417,36 @@ function RelayDashboard() {
           <small>Saved on this device. Keep Relay open for reminders; closed tabs cannot send alerts.</small>
           {reminderNotice && <p role="status">{reminderNotice}</p>}
         </form>}
+      </dialog>
+
+      <dialog ref={paletteDialog} className="command-palette" aria-label="Command palette" onCancel={() => setPaletteOpen(false)} onClose={() => setPaletteOpen(false)}>
+        <div className="palette-input">
+          <span aria-hidden="true">⌘</span>
+          <input
+            ref={paletteInput}
+            aria-label="Run a command"
+            placeholder="Search commands…"
+            value={paletteQuery}
+            onChange={(event) => { setPaletteQuery(event.target.value); setPaletteIndex(0); }}
+            onKeyDown={(event) => {
+              if (event.key === "ArrowDown") { event.preventDefault(); setPaletteIndex((index) => nextIndex(index, paletteResults.length, 1)); }
+              else if (event.key === "ArrowUp") { event.preventDefault(); setPaletteIndex((index) => nextIndex(index, paletteResults.length, -1)); }
+              else if (event.key === "Enter") { event.preventDefault(); const command = paletteResults[paletteIndex]; if (command) runCommand(command); }
+            }}
+          />
+          <kbd>esc</kbd>
+        </div>
+        <ul className="palette-results">
+          {paletteResults.length ? paletteResults.map((command, index) => (
+            <li key={command.id}>
+              <button type="button" className={index === paletteIndex ? "palette-item active" : "palette-item"} onMouseEnter={() => setPaletteIndex(index)} onClick={() => runCommand(command)}>
+                <span className="palette-group">{command.group}</span>
+                <span className="palette-label">{command.label}</span>
+                {command.hint && <span className="palette-hint">{command.hint}</span>}
+              </button>
+            </li>
+          )) : <li className="palette-empty">No matching command.</li>}
+        </ul>
       </dialog>
     </main>
   );
@@ -379,7 +471,7 @@ function ModuleView({
   openReminder,
   clock,
   addFromInbox,
-  onGitHubTasks,
+  onSourceTasks,
 }: {
   name: string;
   tasks: Task[];
@@ -399,11 +491,11 @@ function ModuleView({
   openReminder: (task: Task) => void;
   clock: number;
   addFromInbox: (title: string) => void;
-  onGitHubTasks: (tasks: Task[]) => void;
+  onSourceTasks: (source: Task["source"], tasks: Task[]) => void;
 }) {
   const [taskFilter, setTaskFilter] = useState("All");
   const descriptions: Record<string, string> = {
-    Inbox: "Sample inbox · Live email and GitHub syncing is not connected yet.",
+    Inbox: "Sample inbox · Live email sync is not connected yet. Connected GitHub, Linear, Notion, and Slack items appear under Tasks.",
     Calendar: "One schedule across work and personal calendars.",
     Tasks: "Plan, prioritize, and complete work from one reliable list.",
     Projects: "Sample projects · Project editing is not available yet.",
@@ -425,7 +517,7 @@ function ModuleView({
           <section className="module-card integration-intro">
             <span className="section-kicker">Integration roadmap</span>
             <h2>Your tools stay the source of truth.</h2>
-            <p>Google Calendar and Contacts use account authorization above. The email, GitHub, Slack, Linear, Notion, and Notes controls below are demo flows; they do not connect to your accounts yet.</p>
+            <p>Google Calendar and Contacts use account authorization above. GitHub, Linear, Notion, and Slack are live: paste a key and your real items load into Tasks. The email and Apple Notes controls below are still demo flows and do not connect to your accounts.</p>
             <div className="sync-flow"><span>Email</span><i>⇄</i><span>Relay</span><i>⇄</i><span>Calendar</span><i>⇄</i><span>GitHub</span><i>⇄</i><span>Notes</span></div>
           </section>
 
@@ -449,9 +541,13 @@ function ModuleView({
             ))}
           </div>
 
-          <GitHubConnect onTasks={onGitHubTasks} />
+          <div className="live-connectors">
+            {liveConnectors.map(connector => (
+              <ConnectCard key={connector.source} {...connector} onTasks={tasks => onSourceTasks(connector.source, tasks)} />
+            ))}
+          </div>
           <div className="connections-grid">
-            {[["Slack", "S", "Team messages", "Track mentions, saved messages, and follow-ups."], ["Linear", "L", "Product work", "Sync issues, cycles, projects, and due dates."], ["Notion", "N", "Docs & databases", "Bring action items, decisions, and project pages into Relay."], ["Apple Notes", "▤", "Planned bridge", "Explore sample notes. Device access is not available yet."]].map(([service, mark, type, copy]) => <article className="module-card connection-card" key={service}><div className={`connection-logo ${service.toLowerCase().replace(" ", "-")}`}>{mark}</div><div className="connection-copy"><small>{type} · Demo</small><h2>{service}</h2><p>{copy}</p></div><button className="connect-button" onClick={() => toggleConnection(service)}>{connections[service] ? "Demo enabled" : "Try demo"}</button></article>)}
+            {[["Apple Notes", "▤", "Planned bridge", "Explore sample notes. Device access is not available yet."]].map(([service, mark, type, copy]) => <article className="module-card connection-card" key={service}><div className={`connection-logo ${service.toLowerCase().replace(" ", "-")}`}>{mark}</div><div className="connection-copy"><small>{type} · Demo</small><h2>{service}</h2><p>{copy}</p></div><button className="connect-button" onClick={() => toggleConnection(service)}>{connections[service] ? "Demo enabled" : "Try demo"}</button></article>)}
           </div>
           <div className="permission-note"><span>◎</span><div><strong>You stay in control</strong><p>Connections use the minimum permissions needed. You can pause syncing or disconnect a service at any time.</p></div></div>
         </div>
@@ -497,33 +593,72 @@ function ModuleView({
   );
 }
 
-function GitHubConnect({ onTasks }: { onTasks: (tasks: Task[]) => void }) {
+type LiveConnector = {
+  source: Task["source"];
+  mark: string;
+  heading: string;
+  keyLabel: string;
+  placeholder: string;
+  reading: string;
+  help: ReactNode;
+  link: string;
+  read: (key: string) => Promise<Task[]>;
+};
+
+const liveConnectors: LiveConnector[] = [
+  {
+    source: "GitHub", mark: "⌘", heading: "Bring your assigned issues and PRs into Tasks",
+    keyLabel: "Fine-grained token", placeholder: "github_pat_…", reading: "Reading the issues and pull requests assigned to you…",
+    help: <>Create a fine-grained token with read-only <strong>Issues</strong> access. It is sent only to api.github.com from this tab.</>,
+    link: "https://github.com/settings/personal-access-tokens/new", read: readGitHubTasks,
+  },
+  {
+    source: "Linear", mark: "L", heading: "Pull your active Linear issues into Tasks",
+    keyLabel: "Personal API key", placeholder: "lin_api_…", reading: "Reading the Linear issues assigned to you…",
+    help: <>Create a personal API key in Linear settings. Linear allows browser requests, so this key goes straight to api.linear.app.</>,
+    link: "https://linear.app/settings/account/security", read: readLinearTasks,
+  },
+  {
+    source: "Notion", mark: "N", heading: "Bring your recent Notion pages into Tasks",
+    keyLabel: "Integration token", placeholder: "ntn_…", reading: "Reading your most recently edited Notion pages…",
+    help: <>Create an internal integration and share the pages you want with it. Notion blocks browser calls, so this request is forwarded by Relay&apos;s own worker, which stores nothing.</>,
+    link: "https://www.notion.so/my-integrations", read: readNotionTasks,
+  },
+  {
+    source: "Slack", mark: "S", heading: "Turn messages sent to you into Tasks",
+    keyLabel: "User token", placeholder: "xoxp-…", reading: "Searching for messages sent to you…",
+    help: <>Needs a <strong>user</strong> token (xoxp-) with <code>search:read</code>. Slack refuses browser auth headers, so this is forwarded by Relay&apos;s own worker, which stores nothing.</>,
+    link: "https://api.slack.com/apps", read: readSlackTasks,
+  },
+];
+
+function ConnectCard({ source, mark, heading, keyLabel, placeholder, reading, help, link, read, onTasks }: LiveConnector & { onTasks: (tasks: Task[]) => void }) {
   const [token, setToken] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   async function connect(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
-    setMessage("Reading the issues and pull requests assigned to you…");
+    setMessage(reading);
     try {
-      const githubTasks = await readGitHubTasks(token.trim());
-      onTasks(githubTasks);
-      setMessage(`Loaded ${githubTasks.length} open GitHub item${githubTasks.length === 1 ? "" : "s"} assigned to you into Tasks. Your token stays in this browser tab only.`);
+      const loaded = await read(token.trim());
+      onTasks(loaded);
+      setMessage(`Loaded ${loaded.length} ${source} item${loaded.length === 1 ? "" : "s"} into Tasks. Your key stays in this browser tab only.`);
       setToken("");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not reach GitHub.");
+      setMessage(error instanceof Error ? error.message : `Could not reach ${source}.`);
     } finally {
       setBusy(false);
     }
   }
   return (
-    <section className="module-card github-connector">
-      <div className="email-connector-heading"><div><span className="section-kicker">GitHub · Live</span><h2>Bring your assigned issues and PRs into Tasks</h2></div><span className="connection-logo github">⌘</span></div>
+    <section className={`module-card live-connector ${source.toLowerCase()}-connector`}>
+      <div className="email-connector-heading"><div><span className="section-kicker">{source} · Live</span><h2>{heading}</h2></div><span className={`connection-logo ${source.toLowerCase()}`}>{mark}</span></div>
       <form className="email-form" onSubmit={connect}>
-        <label><span>Fine-grained token</span><input type="password" autoComplete="off" value={token} onChange={e => setToken(e.target.value)} placeholder="github_pat_…" disabled={busy} /></label>
-        <button type="submit" disabled={busy || !token.trim()}>{busy ? "Connecting…" : "Connect GitHub"}</button>
+        <label><span>{keyLabel}</span><input type="password" autoComplete="off" value={token} onChange={e => setToken(e.target.value)} placeholder={placeholder} disabled={busy} /></label>
+        <button type="submit" disabled={busy || !token.trim()}>{busy ? "Connecting…" : `Connect ${source}`}</button>
       </form>
-      <p className="muted-copy">Create a fine-grained token with read-only <strong>Issues</strong> access, then paste it above. It is sent only to api.github.com from this tab, never stored or uploaded. <a className="source-link" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noreferrer">Create a token ↗</a></p>
+      <p className="muted-copy">{help} Keys are never stored or uploaded. <a className="source-link" href={link} target="_blank" rel="noreferrer">Create a key ↗</a></p>
       {message && <p className="source-feedback" role="status">{message}</p>}
     </section>
   );

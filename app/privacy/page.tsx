@@ -22,6 +22,10 @@ export default function PrivacyPage() {
         <h2>Accounts and optional connections</h2>
         <p>Supabase provides account authentication. If you connect Google Calendar or Google Contacts, Google provides temporary authorization for the features you select. Relay does not sell personal information or use it for advertising or cross-app tracking.</p>
 
+        <h2>Connected work tools</h2>
+        <p>You can connect GitHub, Linear, Notion, and Slack by pasting an access key you create yourself. Keys are held only in the current browser tab, are never written to storage or sent to Relay&apos;s database, and are cleared when you reload or close the tab. Items fetched with them are shown as tasks in that tab.</p>
+        <p>GitHub and Linear are called directly from your browser, so those keys go only to api.github.com and api.linear.app. Notion and Slack reject browser requests, so those two requests are forwarded by Relay&apos;s own server to api.notion.com and slack.com only. The forwarding server passes your key through for that single request and does not log, store, or reuse it.</p>
+
         <h2>Sharing and retention</h2>
         <p>Relay shares information only with service providers needed to provide authentication or an integration you request. Your browser controls locally saved tasks. You control exported files through the Files app and can remove a web import by closing or reloading the tab.</p>
 

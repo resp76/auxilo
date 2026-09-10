@@ -1,8 +1,10 @@
+export const TASK_SOURCES = ["GitHub", "Gmail", "Personal", "Calendar", "Linear", "Notion", "Slack"] as const;
+
 export type Task = {
   id: number;
   title: string;
   meta: string;
-  source: "GitHub" | "Gmail" | "Personal" | "Calendar";
+  source: (typeof TASK_SOURCES)[number];
   done: boolean;
   priority?: boolean;
   reminderAt?: string;
@@ -12,7 +14,7 @@ export function parseTasks(raw: string): Task[] {
   const data: unknown = JSON.parse(raw);
   if (!Array.isArray(data) || !data.every((task): task is Task =>
     task && Number.isSafeInteger(task.id) && typeof task.title === "string" &&
-    typeof task.meta === "string" && ["GitHub", "Gmail", "Personal", "Calendar"].includes(task.source) &&
+    typeof task.meta === "string" && (TASK_SOURCES as readonly string[]).includes(task.source) &&
     typeof task.done === "boolean" && (task.priority === undefined || typeof task.priority === "boolean") &&
     (task.reminderAt === undefined || (typeof task.reminderAt === "string" && Number.isFinite(Date.parse(task.reminderAt))))
   ) || new Set(data.map(task => task.id)).size !== data.length) throw new Error("Invalid saved tasks");
@@ -23,6 +25,20 @@ export function reminderInstant(value: string, now: number): string {
   const time = Date.parse(value);
   if (!Number.isFinite(time) || time <= now) throw new Error("Choose a future time for your reminder.");
   return new Date(time).toISOString();
+}
+
+/** Push a reminder out by `minutes` from now, never from its original time. */
+export function snoozeInstant(minutes: number, now: number): string {
+  if (!Number.isFinite(minutes) || minutes <= 0) throw new Error("Choose a snooze length.");
+  return new Date(now + minutes * 60_000).toISOString();
+}
+
+/** Next calendar day at `hour` local time, for "tomorrow morning" snoozes. */
+export function tomorrowAt(now: number, hour = 9): string {
+  const date = new Date(now);
+  date.setDate(date.getDate() + 1);
+  date.setHours(hour, 0, 0, 0);
+  return date.toISOString();
 }
 
 export function dueReminders(tasks: Task[], alerted: Set<string>, now: number): Task[] {
