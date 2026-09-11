@@ -300,3 +300,16 @@ dialog.reminder-dialog:not([open]) { display: none; }
 .sidebar { padding-top: calc(28px + env(safe-area-inset-top)); }
 .reminder-toast { top: calc(62px + env(safe-area-inset-top)); }
 dialog.command-palette { margin-top: calc(12vh + env(safe-area-inset-top)); }
+
+/* Native shell / narrow screens: nothing may scroll horizontally. The webview
+   is full-bleed, so any element wider than the viewport lets the whole page
+   drift sideways. `clip` (not `hidden`) stops that without turning body into a
+   scroll container, which would break the sticky topbar. */
+html, body { max-width: 100%; overflow-x: clip; }
+@media (max-width: 720px) {
+  .workspace-toolbar { flex-wrap: wrap; }
+  .workspace-toolbar > * { min-width: 0; max-width: 100%; }
+  .workspace-toolbar .people-search { min-width: 140px; }
+  .module-page, .content-grid, .people-workspace, .source-grid, .people-grid { max-width: 100%; }
+  .reminder-toast { margin-inline: 12px; }
+}

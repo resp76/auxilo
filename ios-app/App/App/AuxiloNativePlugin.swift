@@ -3,6 +3,8 @@ import Contacts
 import ContactsUI
 import EventKit
 import Foundation
+import UIKit
+import os.log
 
 /**
  Contacts and Calendar for the Auxilo shell.
@@ -31,25 +33,46 @@ public class AuxiloNativePlugin: CAPPlugin, CAPBridgedPlugin {
     /// read — the app never enumerates the address book.
     @objc func pickContacts(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
-            guard let presenter = self.bridge?.viewController else {
+            // Present from the top-most controller, not the bridge VC directly:
+            // if anything is already presented (a leftover auth sheet, say),
+            // presenting on the bridge VC silently does nothing and no delegate
+            // callback ever fires — the JS promise hangs forever. Walking to the
+            // top-most presented controller avoids that.
+            guard var top = self.presentingController() else {
                 call.reject("No view controller is available to present the contact picker.")
                 return
             }
+            while let presented = top.presentedViewController, !(presented is CNContactPickerViewController) {
+                top = presented
+            }
+            os_log("AuxiloNative: presenting contact picker from %{public}@", String(describing: type(of: top)))
+
             let picker = CNContactPickerViewController()
             let delegate = ContactPickerDelegate(
                 selected: { [weak self] contacts in
+                    os_log("AuxiloNative: picker selected %d contacts", contacts.count)
                     call.resolve(["contacts": contacts])
                     self?.pickerDelegate = nil
                 },
                 cancelled: { [weak self] in
+                    os_log("AuxiloNative: picker cancelled")
                     call.resolve(["contacts": []])
                     self?.pickerDelegate = nil
                 }
             )
             self.pickerDelegate = delegate // the picker holds its delegate weakly
             picker.delegate = delegate
-            presenter.present(picker, animated: true)
+            top.present(picker, animated: true) {
+                os_log("AuxiloNative: contact picker presented")
+            }
         }
+    }
+
+    private func presentingController() -> UIViewController? {
+        if let bridged = bridge?.viewController { return bridged }
+        return UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.keyWindow }
+            .first?.rootViewController
     }
 
     /// Requests full calendar access and reads the next 30 days.
