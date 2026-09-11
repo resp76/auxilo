@@ -33,10 +33,22 @@ imports, so `mobile/main.tsx` mounts the very same code the worker renders.
 ## Build and run
 
 ```sh
-pnpm mobile:build      # static bundle -> mobile/dist
-pnpm mobile:sync       # build, then copy into the native project
-pnpm exec cap open ios # open in Xcode
+pnpm install                 # required: the native project's SPM packages
+                             # resolve into node_modules by absolute path
+pnpm mobile:build            # static bundle -> mobile/dist
+pnpm exec cap sync ios       # copies assets AND generates config into ios-app
+pnpm exec cap open ios       # open in Xcode
 ```
+
+**A fresh clone cannot build the iOS app until those run.** Four inputs are
+generated and none are committed: `node_modules`, `mobile/dist`,
+`ios-app/App/App/public/`, and `ios-app/App/App/{config.xml,capacitor.config.json}`
+— the last two are excluded by Capacitor's own `ios-app/.gitignore`. Copying
+`public/` alone is not enough; Xcode fails with "The file config.xml couldn't
+be opened".
+
+Note `pnpm` may not be on PATH — this repo pins it via corepack, so use
+`corepack pnpm …` if the bare command is not found.
 
 ## Deliberate choices worth knowing
 
