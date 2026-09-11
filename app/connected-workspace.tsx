@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { duplicatesFor, findPeople, parseIPhoneExport, readCalendars, readEvents, readPeople, saveEvent } from "./people-calendar";
 import type { Calendar, Event, Person, Session } from "./people-calendar";
-import { apiUrl } from "./api-base";
+import { apiUrl, isNativeShell } from "./api-base.ts";
+import { readDeviceSnapshot } from "./native-device.ts";
 
 type TokenResponse = { access_token: string; expires_in: number; scope: string; error?: string };
 type GoogleIdentity = { accounts: { oauth2: { initTokenClient: (options: { client_id: string; scope: string; include_granted_scopes: boolean; callback: (response: TokenResponse) => void; error_callback: () => void }) => { requestAccessToken: (options: { prompt: string }) => void }; revoke: (token: string, callback: () => void) => void } } };
@@ -113,20 +114,37 @@ export function useConnectedWorkspace() {
     setMessage(`Removed ${session.email} from this session. Manage Google permissions to revoke Auxilo access.`);
   }
 
+  // One path for both sources: a file the user picked, or the device itself.
+  // Everything goes through parseIPhoneExport so validation cannot be skipped.
+  function applySnapshot(text: string, origin: string) {
+    const data = parseIPhoneExport(text);
+    setPeople(current => [...current.filter(p => p.source !== "iPhone"), ...data.people]);
+    setEvents(current => [...current.filter(e => e.source !== "iPhone"), ...data.events]);
+    setImported(data.exportedAt);
+    setMessage(`Imported ${data.people.length} selected iPhone contacts and ${data.events.length} events ${origin}. This replaces the previous iPhone snapshot.`);
+  }
+
   async function importFile(file?: File) {
     if (!file) return;
     try {
       if (file.size > 5_000_000) throw new Error("Choose an export smaller than 5 MB.");
-      const data = parseIPhoneExport(await file.text());
-      setPeople(current => [...current.filter(p => p.source !== "iPhone"), ...data.people]);
-      setEvents(current => [...current.filter(e => e.source !== "iPhone"), ...data.events]);
-      setImported(data.exportedAt);
-      setMessage(`Imported ${data.people.length} selected iPhone contacts and ${data.events.length} events. This replaces the previous iPhone snapshot in this tab.`);
+      applySnapshot(await file.text(), "from that export");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Could not import this file."); }
   }
 
+  async function importFromPhone() {
+    setBusy(true);
+    setMessage("Choose the contacts to include, then allow calendar access…");
+    try {
+      const snapshot = await readDeviceSnapshot();
+      if (!snapshot) throw new Error("Reading this device is only available in the Auxilo app.");
+      applySnapshot(snapshot, "from this iPhone");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Could not read this device."); }
+    finally { setBusy(false); }
+  }
+
   function removeImport() { setPeople(current => current.filter(p => p.source !== "iPhone")); setEvents(current => current.filter(e => e.source !== "iPhone")); setImported(""); setMessage("iPhone import removed from this tab."); }
-  return { sessions, people, calendars, events, clientId, setClientId, sdk, loadGoogle, connect, busy, setBusy, message, setMessage, contactsEnabled, setContactsEnabled, calendarEnabled, setCalendarEnabled, selectedCalendars, setSelectedCalendars, refresh, disconnect, importFile, imported, removeImport, lastRead };
+  return { sessions, people, calendars, events, clientId, setClientId, sdk, loadGoogle, connect, busy, setBusy, message, setMessage, importFromPhone, isNativeShell, contactsEnabled, setContactsEnabled, calendarEnabled, setCalendarEnabled, selectedCalendars, setSelectedCalendars, refresh, disconnect, importFile, imported, removeImport, lastRead };
 }
 type Sources = ReturnType<typeof useConnectedWorkspace>;
 
@@ -144,11 +162,15 @@ export function SourceConnections({ sources: s }: { sources: Sources }) {
         {s.sessions.length > 0 && <><button className="secondary-action" disabled={s.busy} onClick={s.refresh}>Refresh contacts & selected calendars</button><a className="source-link" href="https://myaccount.google.com/connections" target="_blank" rel="noreferrer">Manage Google permissions ↗</a></>}
       </section>
       <section className="module-card source-panel">
-        <div className="source-panel-heading"><span className="connection-logo apple-notes"></span><div><h2>iPhone Calendar & Contacts</h2><p>{s.imported ? "Imported snapshot · no automatic sync" : "Requires the Auxilo iPhone companion"}</p></div></div>
-        <p>Select contacts and calendars on your iPhone, export them from the companion, then open that file here. The web app cannot directly request iOS permissions.</p>
-        <ol><li>Build and install the companion with Xcode.</li><li>Select contacts and allow calendar access.</li><li>Choose calendars, export, then import below.</li></ol>
-        <a className="secondary-action" href="/auxilo-iphone-companion.zip" download>Download iPhone companion source</a>
-        <label className="file-import">Import iPhone export<input type="file" accept=".json,application/json" onChange={e => { void s.importFile(e.target.files?.[0]); e.target.value = ""; }} /></label>
+        <div className="source-panel-heading"><span className="connection-logo apple-notes"></span><div><h2>iPhone Calendar & Contacts</h2><p>{s.imported ? "Snapshot loaded · no automatic sync" : s.isNativeShell ? "Read directly from this iPhone" : "Requires the Auxilo iPhone app"}</p></div></div>
+        {s.isNativeShell ? <>
+          <p>Pick the contacts to include and allow calendar access. Only what you choose is read, and nothing leaves this device.</p>
+          <button className="primary-action" disabled={s.busy} onClick={() => void s.importFromPhone()}>{s.busy ? "Reading\u2026" : "Read contacts & calendar"}</button>
+        </> : <>
+          <p>Open Auxilo on your iPhone to read contacts and calendars directly. In a browser you can still import a snapshot exported from the companion app.</p>
+          <a className="secondary-action" href="/auxilo-iphone-companion.zip" download>Download iPhone companion source</a>
+          <label className="file-import">Import iPhone export<input type="file" accept=".json,application/json" onChange={e => { void s.importFile(e.target.files?.[0]); e.target.value = ""; }} /></label>
+        </>}
         {s.imported && <div className="account-line"><div><strong>Snapshot from {new Date(s.imported).toLocaleString()}</strong><small>Read only in Auxilo · edit originals on iPhone</small></div><button onClick={s.removeImport}>Remove import</button></div>}
         <p className="muted-copy">Tokens and imported data stay in this browser tab’s memory. Reloading clears them. Import only on a device you trust.</p>
       </section>
