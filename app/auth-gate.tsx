@@ -1,7 +1,8 @@
 "use client";
 
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
-import { apiUrl } from "./api-base";
+import { apiUrl, isNativeShell } from "./api-base.ts";
+import { NATIVE_REDIRECT, nativeOAuthSignIn } from "./native-auth.ts";
 import { createContext, type FormEvent, type ReactNode, useContext, useEffect, useState } from "react";
 
 type AuthConfig = { url: string; publishableKey: string };
@@ -77,6 +78,29 @@ export function AuthGate({ children }: { children: ReactNode }) {
     if (!client) return;
     setBusy(true);
     setMessage("");
+
+    // In the native shell capacitor://localhost is not a redirect Supabase will
+    // accept, so letting it redirect the page finishes sign-in in Safari and
+    // the app never gets a session. Ask for the URL instead, open it in the
+    // system browser, and complete the exchange when iOS hands back the
+    // custom scheme.
+    if (isNativeShell) {
+      try {
+        const { data, error } = await client.auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo: NATIVE_REDIRECT, skipBrowserRedirect: true },
+        });
+        if (error) throw new Error(error.message);
+        if (!data.url) throw new Error("Could not start Google sign-in. Please try again.");
+        await nativeOAuthSignIn(client, data.url);
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : "Google sign-in failed.");
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
     const { error } = await client.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: window.location.origin },
@@ -94,7 +118,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     setMessage("");
     const { error } = await client.auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: window.location.origin },
+      options: { emailRedirectTo: isNativeShell ? NATIVE_REDIRECT : window.location.origin },
     });
     setMessage(error ? error.message : "Check your email for a secure sign-in link.");
     setBusy(false);
@@ -117,7 +141,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     const { data, error } = await client.auth.signUp({
       email: email.trim(),
       password,
-      options: { emailRedirectTo: window.location.origin },
+      options: { emailRedirectTo: isNativeShell ? NATIVE_REDIRECT : window.location.origin },
     });
     setMessage(error ? error.message : data.session ? "Your account is ready." : "Check your email to confirm your account.");
     setBusy(false);
