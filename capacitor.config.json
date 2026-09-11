@@ -1,5 +1,5 @@
 {
-  "appId": "com.digitalsandboxlabs.auxilo.mobile",
+  "appId": "com.digitalsandboxlabs.auxilo",
   "appName": "Auxilo",
   "webDir": "mobile/dist",
   "ios": {

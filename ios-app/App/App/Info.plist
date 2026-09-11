@@ -24,7 +24,7 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.digitalsandboxlabs.auxilo.mobile</string>
+			<string>com.digitalsandboxlabs.auxilo</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>auxilo</string>

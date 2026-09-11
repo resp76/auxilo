@@ -52,7 +52,7 @@ Note `pnpm` may not be on PATH — this repo pins it via corepack, so use
 
 ## Deliberate choices worth knowing
 
-- **Bundle id `com.digitalsandboxlabs.auxilo.mobile`** is distinct from the
+- **Bundle id `com.digitalsandboxlabs.auxilo`** is distinct from the
   companion already on TestFlight (`…auxilo`), so this cannot disturb it. Merge
   them only once this app supersedes the exporter.
 - **The Contacts/Calendar plugin is ours**, lifted from `ios/AuxiloCompanion`,
