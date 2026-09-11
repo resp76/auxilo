@@ -1,60 +1,66 @@
 import { isNativeShell } from "./api-base.ts";
 
 /**
- * OAuth for the native shell.
+ * Auth callbacks for the native shell.
  *
- * On the web, Supabase redirects the page to Google and back to the site
+ * On the web, Supabase redirects the page to the provider and back to the site
  * origin. In the app that origin is capacitor://localhost, which Supabase will
- * not accept as a redirect target — it falls back to the configured Site URL,
- * so sign-in completes in Safari and the app never receives a session.
+ * not accept — it falls back to the configured Site URL, so sign-in finishes in
+ * Safari and the app never receives a session.
  *
- * Instead the app opens the provider in the system browser and registers the
- * custom scheme below as the redirect. iOS hands the callback back to the app,
- * and the code in it is exchanged for a session here.
+ * Instead the app registers a custom scheme as the redirect. iOS hands the
+ * callback to the app and the code in it is exchanged for a session.
+ *
+ * The listener is registered for the lifetime of the auth gate rather than
+ * around a single button press: a magic link or a confirmation email is opened
+ * from Mail minutes later, long after any per-click listener would have gone.
+ * One handler covers OAuth, magic links and sign-up confirmations alike.
  *
  * This scheme must also be listed in Supabase under Authentication → URL
  * Configuration → Redirect URLs, and in ios-app/App/App/Info.plist.
  */
 export const NATIVE_REDIRECT = "auxilo://auth-callback";
 
-type SessionExchanger = {
-  auth: { exchangeCodeForSession(code: string): Promise<{ error: { message: string } | null }> };
-};
-
-/**
- * Opens the provider, waits for iOS to hand back the callback URL, and
- * exchanges the code for a session. Resolves once signed in; the auth state
- * listener in AuthGate then renders the workspace.
- */
-export async function nativeOAuthSignIn(client: SessionExchanger, authorizeUrl: string): Promise<void> {
-  const [{ App }, { Browser }] = await Promise.all([
-    import("@capacitor/app"),
-    import("@capacitor/browser"),
-  ]);
-
-  const callback = new Promise<string>((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      void listener.then(l => l.remove());
-      reject(new Error("Sign-in timed out. Please try again."));
-    }, 180_000);
-
-    const listener = App.addListener("appUrlOpen", event => {
-      if (!event.url.startsWith(NATIVE_REDIRECT)) return; // ignore unrelated deep links
-      clearTimeout(timeout);
-      void listener.then(l => l.remove());
-      resolve(event.url);
-    });
-  });
-
-  await Browser.open({ url: authorizeUrl, presentationStyle: "popover" });
-  const url = await callback;
-  await Browser.close().catch(() => {});
-
-  const code = new URL(url).searchParams.get("code");
-  if (!code) throw new Error("Google did not return a sign-in code. Please try again.");
-
-  const { error } = await client.auth.exchangeCodeForSession(code);
-  if (error) throw new Error(error.message);
+/** Opens the provider in the system browser. The callback arrives separately. */
+export async function openAuthBrowser(url: string): Promise<void> {
+  const { Browser } = await import("@capacitor/browser");
+  await Browser.open({ url, presentationStyle: "popover" });
 }
 
-export const supportsNativeOAuth = isNativeShell;
+export async function closeAuthBrowser(): Promise<void> {
+  try {
+    const { Browser } = await import("@capacitor/browser");
+    await Browser.close();
+  } catch {
+    // Already dismissed, or the user swiped it away — nothing to do.
+  }
+}
+
+/**
+ * Calls `onCode` whenever iOS hands back an auth callback. Returns a cleanup
+ * function. No-ops off-device so the web build can call it unconditionally.
+ */
+export function listenForAuthCallback(onCode: (code: string) => void): () => void {
+  if (!isNativeShell) return () => {};
+  let remove = () => {};
+  let cancelled = false;
+
+  void (async () => {
+    try {
+      const { App } = await import("@capacitor/app");
+      const listener = await App.addListener("appUrlOpen", event => {
+        if (!event.url.startsWith(NATIVE_REDIRECT)) return; // ignore unrelated deep links
+        // Supabase PKCE returns ?code=…; an error comes back as ?error_description=…
+        const params = new URL(event.url).searchParams;
+        const code = params.get("code");
+        if (code) onCode(code);
+      });
+      if (cancelled) void listener.remove();
+      else remove = () => void listener.remove();
+    } catch {
+      // Without the plugin there is no deep linking; sign-in still works via password.
+    }
+  })();
+
+  return () => { cancelled = true; remove(); };
+}

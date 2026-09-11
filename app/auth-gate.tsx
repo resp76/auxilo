@@ -2,7 +2,7 @@
 
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 import { apiUrl, isNativeShell } from "./api-base.ts";
-import { NATIVE_REDIRECT, nativeOAuthSignIn } from "./native-auth.ts";
+import { NATIVE_REDIRECT, closeAuthBrowser, listenForAuthCallback, openAuthBrowser } from "./native-auth.ts";
 import { createContext, type FormEvent, type ReactNode, useContext, useEffect, useState } from "react";
 
 type AuthConfig = { url: string; publishableKey: string };
@@ -74,6 +74,19 @@ export function AuthGate({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Any auxilo:// callback lands here: Google, a magic link tapped in Mail
+  // days later, or a sign-up confirmation. Registered for the life of the gate
+  // because those arrive long after whatever started them.
+  useEffect(() => {
+    if (!client) return;
+    return listenForAuthCallback(code => {
+      void client.auth.exchangeCodeForSession(code).then(({ error }) => {
+        if (error) setMessage(error.message);
+        void closeAuthBrowser();
+      });
+    });
+  }, [client]);
+
   async function signInWithGoogle() {
     if (!client) return;
     setBusy(true);
@@ -92,7 +105,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
         });
         if (error) throw new Error(error.message);
         if (!data.url) throw new Error("Could not start Google sign-in. Please try again.");
-        await nativeOAuthSignIn(client, data.url);
+        await openAuthBrowser(data.url);
       } catch (error) {
         setMessage(error instanceof Error ? error.message : "Google sign-in failed.");
       } finally {
