@@ -311,5 +311,7 @@ html, body { max-width: 100%; overflow-x: clip; }
   .workspace-toolbar > * { min-width: 0; max-width: 100%; }
   .workspace-toolbar .people-search { min-width: 140px; }
   .module-page, .content-grid, .people-workspace, .source-grid, .people-grid { max-width: 100%; }
+  .content-grid { grid-template-columns: 1fr; }
+  .right-rail { padding-top: 0; }
   .reminder-toast { margin-inline: 12px; }
 }

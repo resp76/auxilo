@@ -188,12 +188,15 @@ export function AuthGate({ children }: { children: ReactNode }) {
           <p>Sign in to open your workspace and pick up where you left off.</p>
         </div>
 
-        <button className="google-login" type="button" disabled={busy || !configured} onClick={() => void signInWithGoogle()}>
-          <svg aria-hidden="true" viewBox="0 0 24 24"><path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.5-.2-2.2H12v4.3h5.4a4.7 4.7 0 0 1-2 3v2.8h3.4c2-1.9 2.8-4.6 2.8-7.9Z"/><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.8-2.4l-3.4-2.7c-.9.6-2.1 1-3.4 1-2.6 0-4.8-1.8-5.6-4.2H3v2.8A10.3 10.3 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.4 13.7A6 6 0 0 1 6 12c0-.6.1-1.2.4-1.8V7.4H3a10.1 10.1 0 0 0 0 9.1l3.4-2.8Z"/><path fill="#EA4335" d="M12 6.1c1.5 0 2.8.5 3.8 1.5l3-3A10 10 0 0 0 3 7.5l3.4 2.8A6 6 0 0 1 12 6Z"/></svg>
-          Continue with Google
-        </button>
-
-        <div className="auth-divider"><span>or continue with email</span></div>
+        {/* Google OAuth can't complete inside the native webview (no https
+            origin), so it only ever errors there. Web keeps it. */}
+        {!isNativeShell && <>
+          <button className="google-login" type="button" disabled={busy || !configured} onClick={() => void signInWithGoogle()}>
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.5-.2-2.2H12v4.3h5.4a4.7 4.7 0 0 1-2 3v2.8h3.4c2-1.9 2.8-4.6 2.8-7.9Z"/><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.8-2.4l-3.4-2.7c-.9.6-2.1 1-3.4 1-2.6 0-4.8-1.8-5.6-4.2H3v2.8A10.3 10.3 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.4 13.7A6 6 0 0 1 6 12c0-.6.1-1.2.4-1.8V7.4H3a10.1 10.1 0 0 0 0 9.1l3.4-2.8Z"/><path fill="#EA4335" d="M12 6.1c1.5 0 2.8.5 3.8 1.5l3-3A10 10 0 0 0 3 7.5l3.4 2.8A6 6 0 0 1 12 6Z"/></svg>
+            Continue with Google
+          </button>
+          <div className="auth-divider"><span>or continue with email</span></div>
+        </>}
 
         <div className="email-modes" role="tablist" aria-label="Email sign-in method">
           <button type="button" role="tab" aria-selected={emailMode === "link"} className={emailMode === "link" ? "active" : ""} onClick={() => { setEmailMode("link"); setMessage(""); }}>Email link</button>
