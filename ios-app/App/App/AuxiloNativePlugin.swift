@@ -29,6 +29,10 @@ public class AuxiloNativePlugin: CAPPlugin, CAPBridgedPlugin {
     private let store = EKEventStore()
     private var pickerDelegate: ContactPickerDelegate?
 
+    override public func load() {
+        os_log("AuxiloNative: plugin loaded and registered")
+    }
+
     /// Presents the system picker. Only the contacts the user taps are ever
     /// read — the app never enumerates the address book.
     @objc func pickContacts(_ call: CAPPluginCall) {

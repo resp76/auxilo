@@ -136,7 +136,7 @@ export function useConnectedWorkspace() {
     setBusy(true);
     setMessage("Choose the contacts to include, then allow calendar access…");
     try {
-      const snapshot = await readDeviceSnapshot();
+      const snapshot = await readDeviceSnapshot(step => setMessage(step));
       if (!snapshot) throw new Error("Reading this device is only available in the Auxilo app.");
       applySnapshot(snapshot, "from this iPhone");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Could not read this device."); }
